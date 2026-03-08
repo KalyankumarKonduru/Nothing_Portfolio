@@ -23,114 +23,6 @@ const SECTIONS: DisplaySection[] = [
     lineStep: 0, /* unused — hero uses stampLinesScaled */
     lines: ["KALYAN", "KUMAR"],
   },
-  {
-    label: "01 // about",
-    lineStep: 9,
-    lines: [
-      "// about",
-      "",
-      "3+ years building production",
-      "web applications end-to-end.",
-      "",
-      "clinical AI tools with MCP",
-      "servers and RAG pipelines.",
-      "",
-      "SaaS platforms - 2,400+ users.",
-      "e-commerce - 12k+ SKUs.",
-      "",
-      "docker, kubernetes, terraform,",
-      "AWS across the full lifecycle.",
-      "",
-      "MS Computer Science - Purdue.",
-    ],
-  },
-  {
-    label: "02 // experience",
-    lineStep: 8,
-    lines: [
-      "// experience",
-      "",
-      "medical informatics eng. - 2025",
-      "built MedQuery, clinical AI.",
-      "3 MCP servers, 28 medical tools.",
-      "BioClinicalBERT extraction.",
-      "patient analytics React dashboard.",
-      "6 Docker services, k8s in Go.",
-      "",
-      "accenture, SE - 2022-2023",
-      "SaaS platform, React/TS frontend.",
-      "14 REST APIs, Spring Boot backend.",
-      "load time 4.2s to 1.6s.",
-      "87% test coverage, first deploy.",
-      "",
-      "accenture, ASE - 2021",
-      "retail e-commerce, 12k SKUs.",
-      "checkout flow, Stripe integration.",
-      "page load 3.8s to 2.3s.",
-      "140+ tests, cart and catalog.",
-    ],
-  },
-  {
-    label: "03 // projects",
-    lineStep: 8,
-    lines: [
-      "// projects",
-      "",
-      "serverless event pipeline - AWS",
-      "Lambda (Go), API Gateway, DynamoDB.",
-      "CloudFormation IaC, CloudWatch.",
-      "",
-      "concurrent job scheduler - Go",
-      "goroutines + channels, Chi router.",
-      "1,200 jobs/min, zero drops.",
-      "",
-      "next.js e-commerce storefront",
-      "SSR/ISR, Redux, Go (Gin) API.",
-      "98.5 Lighthouse score on Vercel.",
-      "",
-      "graphql product search - Go",
-      "MongoDB, Apollo Client, cursor",
-      "pagination, <100ms responses.",
-    ],
-  },
-  {
-    label: "04 // skills",
-    lineStep: 8,
-    lines: [
-      "// tech stack",
-      "",
-      "React / Next.js / Redux / Zustand",
-      "TypeScript / JavaScript (ES6+)",
-      "Java / Spring Boot / Hibernate",
-      "Python / Flask / FastAPI",
-      "Go / Gin / Chi",
-      "",
-      "Docker / Kubernetes / Helm",
-      "Terraform / AWS / GKE",
-      "PostgreSQL / MongoDB / Redis",
-      "GraphQL / REST / OpenAPI",
-      "",
-      "// AI + testing",
-      "OpenAI / LangChain / RAG",
-      "Jest / Cypress / Playwright / k6",
-    ],
-  },
-  {
-    label: "05 // contact",
-    lineStep: 9,
-    lines: [
-      "// lets connect",
-      "",
-      "kkalyankumar.dev@gmail.com",
-      "",
-      "github.com/kalyankumar",
-      "linkedin.com/in/kalyankumar",
-      "",
-      "morganville, NJ",
-      "",
-      "// available for opportunities",
-    ],
-  },
 ];
 
 const TOTAL = SECTIONS.length;
@@ -232,7 +124,7 @@ export default function ParticleCanvas() {
     /* Enable scrolling */
     document.body.style.overflow = "auto";
     document.body.style.overflowX = "hidden";
-    document.body.style.height = `${TOTAL * 100}vh`;
+    document.body.style.height = `${200}vh`;
 
     /* ── Stamp pixel-art text for each section ── */
     /* Hero: "KALYAN" above center, "KUMAR" below center,
@@ -561,12 +453,12 @@ export default function ParticleCanvas() {
         tgtY = tgtY * (1 - centerPull) + cY * centerPull;
 
         /* Converge toward cursor when scrolling from hero toward experience */
-        if (progress > 0.5 && progress < 2.15) {
+        if (progress > 0.5 && progress < 1.5) {
           const convMx = soundMouse.x;
           const convMy = soundMouse.y;
           if (convMx > 0 && convMy > 0) {
-            /* Ramp 0→1 from progress 0.5 to ~1.7, quadratic for dramatic pull */
-            const convergeFactor = Math.min(1, (progress - 0.5) / 1.2);
+            /* Ramp 0→1 from progress 0.5 to ~1.0, quadratic for dramatic pull */
+            const convergeFactor = Math.min(1, (progress - 0.5) / 0.5);
             const pullStr = convergeFactor * convergeFactor * 0.85;
             tgtX = tgtX + (convMx - tgtX) * pullStr;
             tgtY = tgtY + (convMy - tgtY) * pullStr;

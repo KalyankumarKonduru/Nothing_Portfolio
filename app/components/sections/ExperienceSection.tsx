@@ -168,14 +168,13 @@ export default function ExperienceSection() {
   }, [isActive]);
 
   /* ── Scroll-based activation ──
-     ParticleCanvas uses section indices: hero=0 (0-100vh), about=1 (100-200vh),
-     experience=2 (200-300vh). Activate when scroll crosses into section 2. */
+     Activate right after hero section (0-100vh). */
   useEffect(() => {
     const H = window.innerHeight;
     const handleScroll = () => {
       const scrollY = window.scrollY;
-      /* Activate when ~1.8 viewports scrolled (entering experience area) */
-      const threshold = H * 1.8;
+      /* Activate when ~0.8 viewports scrolled (right after hero) */
+      const threshold = H * 0.8;
       if (scrollY >= threshold && !isActive) {
         setIsActive(true);
       } else if (scrollY < threshold && isActive) {
@@ -375,9 +374,17 @@ export default function ExperienceSection() {
           const d2 = dx * dx + dy * dy;
           if (d2 <= R2) {
             const dist = Math.sqrt(d2);
-            /* Quadratic falloff */
+            /* Quadratic falloff for ambient dots */
             const falloff = Math.max(0, 1 - dist * INV_R);
-            const baseTarget = falloff * falloff;
+            let baseTarget = falloff * falloff;
+
+            /* Year dot proximity hint — matches entry screen K behavior:
+               use linear falloff (much brighter) so year digits POP
+               against the dimmer quadratic ambient dots */
+            if (isYearDot[idx] && dist < 130) {
+              baseTarget = Math.max(baseTarget, falloff * 0.9);
+            }
+
             if (baseTarget > targetMap[idx]) {
               targetMap[idx] = baseTarget;
             }
@@ -385,80 +392,9 @@ export default function ExperienceSection() {
         }
       }
 
-      /* Zigzag line progressive dot lighting — moving wave along the path */
-      const zigPts = zigzagPointsRef.current;
-      const zigStart = zigzagLineStartRef.current;
-      if (zigPts.length > 0 && zigStart > 0) {
-        const zigElapsed = performance.now() - zigStart;
-        const zigDuration = 2500;
-        const zigProgress = Math.max(0, Math.min(1, zigElapsed / zigDuration));
-        if (zigProgress > 0) {
-          const numActive = Math.floor(zigProgress * zigPts.length);
-          const windowSize = 20;
-          const windowStart = Math.max(0, numActive - windowSize);
-          const zigCellRad = 3;
-          const zigRadius = step * zigCellRad;
-          const zigR2 = zigRadius * zigRadius;
-          for (let s = windowStart; s < numActive; s++) {
-            const pt = zigPts[s];
-            const fadeFromEdge = 1 - (numActive - s) / windowSize;
-            const gxP = Math.floor((pt.x - oX) / step);
-            const gyP = Math.floor((pt.y - oY) / step);
-            for (let dy = -zigCellRad; dy <= zigCellRad; dy++) {
-              for (let dx = -zigCellRad; dx <= zigCellRad; dx++) {
-                const gxz = gxP + dx;
-                const gyz = gyP + dy;
-                if (gxz >= 0 && gxz < cols && gyz >= 0 && gyz < rows) {
-                  const idxz = gyz * cols + gxz;
-                  const dpx = oX + gxz * step + half;
-                  const dpy = oY + gyz * step + half;
-                  const ddx = dpx - pt.x;
-                  const ddy = dpy - pt.y;
-                  const dd2 = ddx * ddx + ddy * ddy;
-                  if (dd2 < zigR2) {
-                    const dist = Math.sqrt(dd2);
-                    const falloff = Math.max(0, 1 - dist / zigRadius);
-                    const lineTarget = falloff * falloff * 0.65 * (0.4 + 0.6 * fadeFromEdge);
-                    if (lineTarget > targetMap[idxz]) {
-                      targetMap[idxz] = lineTarget;
-                    }
-                  }
-                }
-              }
-            }
-          }
-        }
-      }
 
-      /* Group year dots so the whole year lights up uniformly if touched */
-      for (const yp of YEAR_POSITIONS) {
-        const stamp = yearStamps.get(yp.year)!;
-        let maxTarget = 0;
-        const indices: number[] = [];
-        stamp.forEach((key) => {
-          const [gxS, gyS] = key.split(",");
-          const idx = Number(gyS) * cols + Number(gxS);
-          if (idx >= 0 && idx < N) {
-            indices.push(idx);
-            if (targetMap[idx] > maxTarget) {
-              maxTarget = targetMap[idx];
-            }
-          }
-        });
-        
-        /* If any dot in the year is touched significantly, uniformly light up the whole year */
-        if (maxTarget > 0.05) {
-          /* Boost the visibility to make the number pop clearly */
-          const uniformTarget = Math.min(1, maxTarget * 1.8);
-          for (const idx of indices) {
-            if (uniformTarget > targetMap[idx]) {
-              targetMap[idx] = uniformTarget;
-            }
-          }
-        }
-      }
 
-      /* Apply target map to actual glows */
+      /* Apply target map to actual glows — snap-fast lerp matching entry screen */
       for (let i = 0; i < N; i++) {
         if (targetMap[i] > glows[i]) {
           glows[i] += (targetMap[i] - glows[i]) * 0.55;
@@ -475,11 +411,11 @@ export default function ExperienceSection() {
           const idx = Number(gyS) * cols + Number(gxS);
           if (idx >= 0 && idx < N) {
             totalCount++;
-            if (glows[idx] > 0.3) litCount++;
+            if (glows[idx] > 0.15) litCount++;
           }
         });
         const ratio = totalCount > 0 ? litCount / totalCount : 0;
-        if (ratio > 0.4) {
+        if (ratio > 0.15) {
           setRevealedYears((prev) => {
             if (prev.has(yp.year)) return prev;
             const next = new Set(prev);

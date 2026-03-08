@@ -5299,114 +5299,6 @@ const SECTIONS = [
             "KALYAN",
             "KUMAR"
         ]
-    },
-    {
-        label: "01 // about",
-        lineStep: 9,
-        lines: [
-            "// about",
-            "",
-            "3+ years building production",
-            "web applications end-to-end.",
-            "",
-            "clinical AI tools with MCP",
-            "servers and RAG pipelines.",
-            "",
-            "SaaS platforms - 2,400+ users.",
-            "e-commerce - 12k+ SKUs.",
-            "",
-            "docker, kubernetes, terraform,",
-            "AWS across the full lifecycle.",
-            "",
-            "MS Computer Science - Purdue."
-        ]
-    },
-    {
-        label: "02 // experience",
-        lineStep: 8,
-        lines: [
-            "// experience",
-            "",
-            "medical informatics eng. - 2025",
-            "built MedQuery, clinical AI.",
-            "3 MCP servers, 28 medical tools.",
-            "BioClinicalBERT extraction.",
-            "patient analytics React dashboard.",
-            "6 Docker services, k8s in Go.",
-            "",
-            "accenture, SE - 2022-2023",
-            "SaaS platform, React/TS frontend.",
-            "14 REST APIs, Spring Boot backend.",
-            "load time 4.2s to 1.6s.",
-            "87% test coverage, first deploy.",
-            "",
-            "accenture, ASE - 2021",
-            "retail e-commerce, 12k SKUs.",
-            "checkout flow, Stripe integration.",
-            "page load 3.8s to 2.3s.",
-            "140+ tests, cart and catalog."
-        ]
-    },
-    {
-        label: "03 // projects",
-        lineStep: 8,
-        lines: [
-            "// projects",
-            "",
-            "serverless event pipeline - AWS",
-            "Lambda (Go), API Gateway, DynamoDB.",
-            "CloudFormation IaC, CloudWatch.",
-            "",
-            "concurrent job scheduler - Go",
-            "goroutines + channels, Chi router.",
-            "1,200 jobs/min, zero drops.",
-            "",
-            "next.js e-commerce storefront",
-            "SSR/ISR, Redux, Go (Gin) API.",
-            "98.5 Lighthouse score on Vercel.",
-            "",
-            "graphql product search - Go",
-            "MongoDB, Apollo Client, cursor",
-            "pagination, <100ms responses."
-        ]
-    },
-    {
-        label: "04 // skills",
-        lineStep: 8,
-        lines: [
-            "// tech stack",
-            "",
-            "React / Next.js / Redux / Zustand",
-            "TypeScript / JavaScript (ES6+)",
-            "Java / Spring Boot / Hibernate",
-            "Python / Flask / FastAPI",
-            "Go / Gin / Chi",
-            "",
-            "Docker / Kubernetes / Helm",
-            "Terraform / AWS / GKE",
-            "PostgreSQL / MongoDB / Redis",
-            "GraphQL / REST / OpenAPI",
-            "",
-            "// AI + testing",
-            "OpenAI / LangChain / RAG",
-            "Jest / Cypress / Playwright / k6"
-        ]
-    },
-    {
-        label: "05 // contact",
-        lineStep: 9,
-        lines: [
-            "// lets connect",
-            "",
-            "kkalyankumar.dev@gmail.com",
-            "",
-            "github.com/kalyankumar",
-            "linkedin.com/in/kalyankumar",
-            "",
-            "morganville, NJ",
-            "",
-            "// available for opportunities"
-        ]
     }
 ];
 const TOTAL = SECTIONS.length;
@@ -5474,7 +5366,7 @@ function ParticleCanvas() {
             hdctx.fill();
             /* Enable scrolling */ document.body.style.overflow = "auto";
             document.body.style.overflowX = "hidden";
-            document.body.style.height = `${TOTAL * 100}vh`;
+            document.body.style.height = `${200}vh`;
             /* ── Stamp pixel-art text for each section ── */ /* Hero: "KALYAN" above center, "KUMAR" below center,
        with a gap in the middle for the bio overlay. */ const charH = 7 * heroScale; /* height of one line in grid cells */ 
             /* Snap the gap to heroScale so KUMAR dots land on the same grid as KALYAN */ const bioGapRows = Math.round(Math.round(rows * 0.28) / heroScale) * heroScale;
@@ -5755,11 +5647,11 @@ function ParticleCanvas() {
                         /* Center pull during mid-transition */ const centerPull = Math.sin(t * Math.PI) * 0.15;
                         tgtX = tgtX * (1 - centerPull) + cX * centerPull;
                         tgtY = tgtY * (1 - centerPull) + cY * centerPull;
-                        /* Converge toward cursor when scrolling from hero toward experience */ if (progress > 0.5 && progress < 2.15) {
+                        /* Converge toward cursor when scrolling from hero toward experience */ if (progress > 0.5 && progress < 1.5) {
                             const convMx = soundMouse.x;
                             const convMy = soundMouse.y;
                             if (convMx > 0 && convMy > 0) {
-                                /* Ramp 0→1 from progress 0.5 to ~1.7, quadratic for dramatic pull */ const convergeFactor = Math.min(1, (progress - 0.5) / 1.2);
+                                /* Ramp 0→1 from progress 0.5 to ~1.0, quadratic for dramatic pull */ const convergeFactor = Math.min(1, (progress - 0.5) / 0.5);
                                 const pullStr = convergeFactor * convergeFactor * 0.85;
                                 tgtX = tgtX + (convMx - tgtX) * pullStr;
                                 tgtY = tgtY + (convMy - tgtY) * pullStr;
@@ -5858,7 +5750,7 @@ function ParticleCanvas() {
                 className: "pc-canvas"
             }, void 0, false, {
                 fileName: "[project]/app/components/ParticleCanvas.tsx",
-                lineNumber: 673,
+                lineNumber: 565,
                 columnNumber: 7
             }, this),
             /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("div", {
@@ -5873,7 +5765,7 @@ function ParticleCanvas() {
                 }
             }, void 0, false, {
                 fileName: "[project]/app/components/ParticleCanvas.tsx",
-                lineNumber: 676,
+                lineNumber: 568,
                 columnNumber: 7
             }, this),
             /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("nav", {
@@ -5892,14 +5784,14 @@ function ParticleCanvas() {
                                 children: "◆"
                             }, void 0, false, {
                                 fileName: "[project]/app/components/ParticleCanvas.tsx",
-                                lineNumber: 691,
+                                lineNumber: 583,
                                 columnNumber: 13
                             }, this),
                             "DEV"
                         ]
                     }, void 0, true, {
                         fileName: "[project]/app/components/ParticleCanvas.tsx",
-                        lineNumber: 690,
+                        lineNumber: 582,
                         columnNumber: 9
                     }, this),
                     /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("div", {
@@ -5915,7 +5807,7 @@ function ParticleCanvas() {
                                         children: "GITHUB"
                                     }, void 0, false, {
                                         fileName: "[project]/app/components/ParticleCanvas.tsx",
-                                        lineNumber: 695,
+                                        lineNumber: 587,
                                         columnNumber: 13
                                     }, this),
                                     /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("a", {
@@ -5925,7 +5817,7 @@ function ParticleCanvas() {
                                         children: "LINKEDIN"
                                     }, void 0, false, {
                                         fileName: "[project]/app/components/ParticleCanvas.tsx",
-                                        lineNumber: 702,
+                                        lineNumber: 594,
                                         columnNumber: 13
                                     }, this),
                                     /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("a", {
@@ -5935,13 +5827,13 @@ function ParticleCanvas() {
                                         children: "RESUME"
                                     }, void 0, false, {
                                         fileName: "[project]/app/components/ParticleCanvas.tsx",
-                                        lineNumber: 709,
+                                        lineNumber: 601,
                                         columnNumber: 13
                                     }, this)
                                 ]
                             }, void 0, true, {
                                 fileName: "[project]/app/components/ParticleCanvas.tsx",
-                                lineNumber: 694,
+                                lineNumber: 586,
                                 columnNumber: 11
                             }, this),
                             /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("a", {
@@ -5953,26 +5845,26 @@ function ParticleCanvas() {
                                         children: "●"
                                     }, void 0, false, {
                                         fileName: "[project]/app/components/ParticleCanvas.tsx",
-                                        lineNumber: 717,
+                                        lineNumber: 609,
                                         columnNumber: 13
                                     }, this),
                                     " KKALYANKUMAR.DEV"
                                 ]
                             }, void 0, true, {
                                 fileName: "[project]/app/components/ParticleCanvas.tsx",
-                                lineNumber: 713,
+                                lineNumber: 605,
                                 columnNumber: 11
                             }, this)
                         ]
                     }, void 0, true, {
                         fileName: "[project]/app/components/ParticleCanvas.tsx",
-                        lineNumber: 693,
+                        lineNumber: 585,
                         columnNumber: 9
                     }, this)
                 ]
             }, void 0, true, {
                 fileName: "[project]/app/components/ParticleCanvas.tsx",
-                lineNumber: 689,
+                lineNumber: 581,
                 columnNumber: 7
             }, this),
             /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("div", {
@@ -5986,12 +5878,12 @@ function ParticleCanvas() {
                     children: "I'M KALYAN, A FULL-STACK SOFTWARE ENGINEER BASED IN NEW JERSEY, DEDICATED TO BUILDING SCALABLE WEB APPLICATIONS & AI-POWERED TOOLS FOR PRODUCTION ENVIRONMENTS. LET'S CONNECT!"
                 }, void 0, false, {
                     fileName: "[project]/app/components/ParticleCanvas.tsx",
-                    lineNumber: 724,
+                    lineNumber: 616,
                     columnNumber: 9
                 }, this)
             }, void 0, false, {
                 fileName: "[project]/app/components/ParticleCanvas.tsx",
-                lineNumber: 723,
+                lineNumber: 615,
                 columnNumber: 7
             }, this),
             /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("div", {
@@ -6006,7 +5898,7 @@ function ParticleCanvas() {
                         children: "SCROLL TO SEE MORE"
                     }, void 0, false, {
                         fileName: "[project]/app/components/ParticleCanvas.tsx",
-                        lineNumber: 736,
+                        lineNumber: 628,
                         columnNumber: 9
                     }, this),
                     /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("span", {
@@ -6014,13 +5906,13 @@ function ParticleCanvas() {
                         children: "AVAILABLE FOR OPPORTUNITIES"
                     }, void 0, false, {
                         fileName: "[project]/app/components/ParticleCanvas.tsx",
-                        lineNumber: 737,
+                        lineNumber: 629,
                         columnNumber: 9
                     }, this)
                 ]
             }, void 0, true, {
                 fileName: "[project]/app/components/ParticleCanvas.tsx",
-                lineNumber: 735,
+                lineNumber: 627,
                 columnNumber: 7
             }, this),
             /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("div", {
@@ -6030,12 +5922,12 @@ function ParticleCanvas() {
                         "data-section": i
                     }, i, false, {
                         fileName: "[project]/app/components/ParticleCanvas.tsx",
-                        lineNumber: 743,
+                        lineNumber: 635,
                         columnNumber: 11
                     }, this))
             }, void 0, false, {
                 fileName: "[project]/app/components/ParticleCanvas.tsx",
-                lineNumber: 741,
+                lineNumber: 633,
                 columnNumber: 7
             }, this),
             /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("div", {
@@ -6050,7 +5942,7 @@ function ParticleCanvas() {
                         children: SECTIONS[0].label
                     }, void 0, false, {
                         fileName: "[project]/app/components/ParticleCanvas.tsx",
-                        lineNumber: 749,
+                        lineNumber: 641,
                         columnNumber: 9
                     }, this),
                     /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("div", {
@@ -6059,18 +5951,18 @@ function ParticleCanvas() {
                                 className: `pc-dot${i === 0 ? " active" : ""}`
                             }, i, false, {
                                 fileName: "[project]/app/components/ParticleCanvas.tsx",
-                                lineNumber: 752,
+                                lineNumber: 644,
                                 columnNumber: 13
                             }, this))
                     }, void 0, false, {
                         fileName: "[project]/app/components/ParticleCanvas.tsx",
-                        lineNumber: 750,
+                        lineNumber: 642,
                         columnNumber: 9
                     }, this)
                 ]
             }, void 0, true, {
                 fileName: "[project]/app/components/ParticleCanvas.tsx",
-                lineNumber: 748,
+                lineNumber: 640,
                 columnNumber: 7
             }, this)
         ]
@@ -6270,14 +6162,13 @@ function ExperienceSection() {
         isActive
     ]);
     /* ── Scroll-based activation ──
-     ParticleCanvas uses section indices: hero=0 (0-100vh), about=1 (100-200vh),
-     experience=2 (200-300vh). Activate when scroll crosses into section 2. */ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$index$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["useEffect"])({
+     Activate right after hero section (0-100vh). */ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$index$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["useEffect"])({
         "ExperienceSection.useEffect": ()=>{
             const H = window.innerHeight;
             const handleScroll = {
                 "ExperienceSection.useEffect.handleScroll": ()=>{
                     const scrollY = window.scrollY;
-                    /* Activate when ~1.8 viewports scrolled (entering experience area) */ const threshold = H * 1.8;
+                    /* Activate when ~0.8 viewports scrolled (right after hero) */ const threshold = H * 0.8;
                     if (scrollY >= threshold && !isActive) {
                         setIsActive(true);
                     } else if (scrollY < threshold && isActive) {
@@ -6464,83 +6355,20 @@ function ExperienceSection() {
                             const d2 = dx * dx + dy * dy;
                             if (d2 <= R2) {
                                 const dist = Math.sqrt(d2);
-                                /* Quadratic falloff */ const falloff = Math.max(0, 1 - dist * INV_R);
-                                const baseTarget = falloff * falloff;
+                                /* Quadratic falloff for ambient dots */ const falloff = Math.max(0, 1 - dist * INV_R);
+                                let baseTarget = falloff * falloff;
+                                /* Year dot proximity hint — matches entry screen K behavior:
+               use linear falloff (much brighter) so year digits POP
+               against the dimmer quadratic ambient dots */ if (isYearDot[idx] && dist < 130) {
+                                    baseTarget = Math.max(baseTarget, falloff * 0.9);
+                                }
                                 if (baseTarget > targetMap[idx]) {
                                     targetMap[idx] = baseTarget;
                                 }
                             }
                         }
                     }
-                    /* Zigzag line progressive dot lighting — moving wave along the path */ const zigPts = zigzagPointsRef.current;
-                    const zigStart = zigzagLineStartRef.current;
-                    if (zigPts.length > 0 && zigStart > 0) {
-                        const zigElapsed = performance.now() - zigStart;
-                        const zigDuration = 2500;
-                        const zigProgress = Math.max(0, Math.min(1, zigElapsed / zigDuration));
-                        if (zigProgress > 0) {
-                            const numActive = Math.floor(zigProgress * zigPts.length);
-                            const windowSize = 20;
-                            const windowStart = Math.max(0, numActive - windowSize);
-                            const zigCellRad = 3;
-                            const zigRadius = step * zigCellRad;
-                            const zigR2 = zigRadius * zigRadius;
-                            for(let s = windowStart; s < numActive; s++){
-                                const pt = zigPts[s];
-                                const fadeFromEdge = 1 - (numActive - s) / windowSize;
-                                const gxP = Math.floor((pt.x - oX) / step);
-                                const gyP = Math.floor((pt.y - oY) / step);
-                                for(let dy = -zigCellRad; dy <= zigCellRad; dy++){
-                                    for(let dx = -zigCellRad; dx <= zigCellRad; dx++){
-                                        const gxz = gxP + dx;
-                                        const gyz = gyP + dy;
-                                        if (gxz >= 0 && gxz < cols && gyz >= 0 && gyz < rows) {
-                                            const idxz = gyz * cols + gxz;
-                                            const dpx = oX + gxz * step + half;
-                                            const dpy = oY + gyz * step + half;
-                                            const ddx = dpx - pt.x;
-                                            const ddy = dpy - pt.y;
-                                            const dd2 = ddx * ddx + ddy * ddy;
-                                            if (dd2 < zigR2) {
-                                                const dist = Math.sqrt(dd2);
-                                                const falloff = Math.max(0, 1 - dist / zigRadius);
-                                                const lineTarget = falloff * falloff * 0.65 * (0.4 + 0.6 * fadeFromEdge);
-                                                if (lineTarget > targetMap[idxz]) {
-                                                    targetMap[idxz] = lineTarget;
-                                                }
-                                            }
-                                        }
-                                    }
-                                }
-                            }
-                        }
-                    }
-                    /* Group year dots so the whole year lights up uniformly if touched */ for (const yp of YEAR_POSITIONS){
-                        const stamp = yearStamps.get(yp.year);
-                        let maxTarget = 0;
-                        const indices = [];
-                        stamp.forEach({
-                            "ExperienceSection.useEffect.tick": (key)=>{
-                                const [gxS, gyS] = key.split(",");
-                                const idx = Number(gyS) * cols + Number(gxS);
-                                if (idx >= 0 && idx < N) {
-                                    indices.push(idx);
-                                    if (targetMap[idx] > maxTarget) {
-                                        maxTarget = targetMap[idx];
-                                    }
-                                }
-                            }
-                        }["ExperienceSection.useEffect.tick"]);
-                        /* If any dot in the year is touched significantly, uniformly light up the whole year */ if (maxTarget > 0.05) {
-                            /* Boost the visibility to make the number pop clearly */ const uniformTarget = Math.min(1, maxTarget * 1.8);
-                            for (const idx of indices){
-                                if (uniformTarget > targetMap[idx]) {
-                                    targetMap[idx] = uniformTarget;
-                                }
-                            }
-                        }
-                    }
-                    /* Apply target map to actual glows */ for(let i = 0; i < N; i++){
+                    /* Apply target map to actual glows — snap-fast lerp matching entry screen */ for(let i = 0; i < N; i++){
                         if (targetMap[i] > glows[i]) {
                             glows[i] += (targetMap[i] - glows[i]) * 0.55;
                         }
@@ -6555,12 +6383,12 @@ function ExperienceSection() {
                                 const idx = Number(gyS) * cols + Number(gxS);
                                 if (idx >= 0 && idx < N) {
                                     totalCount++;
-                                    if (glows[idx] > 0.3) litCount++;
+                                    if (glows[idx] > 0.15) litCount++;
                                 }
                             }
                         }["ExperienceSection.useEffect.tick"]);
                         const ratio = totalCount > 0 ? litCount / totalCount : 0;
-                        if (ratio > 0.4) {
+                        if (ratio > 0.15) {
                             setRevealedYears({
                                 "ExperienceSection.useEffect.tick": (prev)=>{
                                     if (prev.has(yp.year)) return prev;
@@ -6764,12 +6592,12 @@ function ExperienceSection() {
                     children: ch === " " ? "\u00A0" : ch
                 }, `${key}-${i}`, false, {
                     fileName: "[project]/app/components/sections/ExperienceSection.tsx",
-                    lineNumber: 660,
+                    lineNumber: 596,
                     columnNumber: 9
                 }, this))
         }, key, false, {
             fileName: "[project]/app/components/sections/ExperienceSection.tsx",
-            lineNumber: 658,
+            lineNumber: 594,
             columnNumber: 5
         }, this);
     /* ── Mini marquee for cards ── */ const buildMiniMarquee = (text)=>/*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("div", {
@@ -6783,17 +6611,17 @@ function ExperienceSection() {
                         children: text
                     }, i, false, {
                         fileName: "[project]/app/components/sections/ExperienceSection.tsx",
-                        lineNumber: 676,
+                        lineNumber: 612,
                         columnNumber: 11
                     }, this))
             }, void 0, false, {
                 fileName: "[project]/app/components/sections/ExperienceSection.tsx",
-                lineNumber: 674,
+                lineNumber: 610,
                 columnNumber: 7
             }, this)
         }, void 0, false, {
             fileName: "[project]/app/components/sections/ExperienceSection.tsx",
-            lineNumber: 673,
+            lineNumber: 609,
             columnNumber: 5
         }, this);
     return /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("section", {
@@ -6806,7 +6634,7 @@ function ExperienceSection() {
                 className: "exp-dot-canvas"
             }, void 0, false, {
                 fileName: "[project]/app/components/sections/ExperienceSection.tsx",
-                lineNumber: 685,
+                lineNumber: 621,
                 columnNumber: 7
             }, this),
             /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("div", {
@@ -6814,7 +6642,7 @@ function ExperienceSection() {
                 className: "exp-cursor-glow"
             }, void 0, false, {
                 fileName: "[project]/app/components/sections/ExperienceSection.tsx",
-                lineNumber: 688,
+                lineNumber: 624,
                 columnNumber: 7
             }, this),
             /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("div", {
@@ -6832,23 +6660,23 @@ function ExperienceSection() {
                                     children: "◆"
                                 }, void 0, false, {
                                     fileName: "[project]/app/components/sections/ExperienceSection.tsx",
-                                    lineNumber: 696,
+                                    lineNumber: 632,
                                     columnNumber: 15
                                 }, this)
                             ]
                         }, i, true, {
                             fileName: "[project]/app/components/sections/ExperienceSection.tsx",
-                            lineNumber: 694,
+                            lineNumber: 630,
                             columnNumber: 13
                         }, this))
                 }, void 0, false, {
                     fileName: "[project]/app/components/sections/ExperienceSection.tsx",
-                    lineNumber: 692,
+                    lineNumber: 628,
                     columnNumber: 9
                 }, this)
             }, void 0, false, {
                 fileName: "[project]/app/components/sections/ExperienceSection.tsx",
-                lineNumber: 691,
+                lineNumber: 627,
                 columnNumber: 7
             }, this),
             /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("svg", {
@@ -6868,7 +6696,7 @@ function ExperienceSection() {
                                     stopOpacity: "0.8"
                                 }, void 0, false, {
                                     fileName: "[project]/app/components/sections/ExperienceSection.tsx",
-                                    lineNumber: 706,
+                                    lineNumber: 642,
                                     columnNumber: 13
                                 }, this),
                                 /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("stop", {
@@ -6877,7 +6705,7 @@ function ExperienceSection() {
                                     stopOpacity: "1"
                                 }, void 0, false, {
                                     fileName: "[project]/app/components/sections/ExperienceSection.tsx",
-                                    lineNumber: 707,
+                                    lineNumber: 643,
                                     columnNumber: 13
                                 }, this),
                                 /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("stop", {
@@ -6886,18 +6714,18 @@ function ExperienceSection() {
                                     stopOpacity: "0.4"
                                 }, void 0, false, {
                                     fileName: "[project]/app/components/sections/ExperienceSection.tsx",
-                                    lineNumber: 708,
+                                    lineNumber: 644,
                                     columnNumber: 13
                                 }, this)
                             ]
                         }, void 0, true, {
                             fileName: "[project]/app/components/sections/ExperienceSection.tsx",
-                            lineNumber: 705,
+                            lineNumber: 641,
                             columnNumber: 11
                         }, this)
                     }, void 0, false, {
                         fileName: "[project]/app/components/sections/ExperienceSection.tsx",
-                        lineNumber: 704,
+                        lineNumber: 640,
                         columnNumber: 9
                     }, this),
                     /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("path", {
@@ -6905,7 +6733,7 @@ function ExperienceSection() {
                         className: "exp-zigzag-glow"
                     }, void 0, false, {
                         fileName: "[project]/app/components/sections/ExperienceSection.tsx",
-                        lineNumber: 711,
+                        lineNumber: 647,
                         columnNumber: 9
                     }, this),
                     /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("path", {
@@ -6913,13 +6741,13 @@ function ExperienceSection() {
                         className: "exp-zigzag-path"
                     }, void 0, false, {
                         fileName: "[project]/app/components/sections/ExperienceSection.tsx",
-                        lineNumber: 712,
+                        lineNumber: 648,
                         columnNumber: 9
                     }, this)
                 ]
             }, void 0, true, {
                 fileName: "[project]/app/components/sections/ExperienceSection.tsx",
-                lineNumber: 703,
+                lineNumber: 639,
                 columnNumber: 7
             }, this),
             YEAR_POSITIONS.map(({ year, xPct, yPct })=>{
@@ -6950,12 +6778,12 @@ function ExperienceSection() {
                         children: year
                     }, void 0, false, {
                         fileName: "[project]/app/components/sections/ExperienceSection.tsx",
-                        lineNumber: 732,
+                        lineNumber: 668,
                         columnNumber: 13
                     }, this)
                 }, year, false, {
                     fileName: "[project]/app/components/sections/ExperienceSection.tsx",
-                    lineNumber: 721,
+                    lineNumber: 657,
                     columnNumber: 11
                 }, this);
             }),
@@ -6979,7 +6807,7 @@ function ExperienceSection() {
                                 children: "✕"
                             }, void 0, false, {
                                 fileName: "[project]/app/components/sections/ExperienceSection.tsx",
-                                lineNumber: 748,
+                                lineNumber: 684,
                                 columnNumber: 15
                             }, this),
                             /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("div", {
@@ -6987,7 +6815,7 @@ function ExperienceSection() {
                                 children: entry.year
                             }, void 0, false, {
                                 fileName: "[project]/app/components/sections/ExperienceSection.tsx",
-                                lineNumber: 756,
+                                lineNumber: 692,
                                 columnNumber: 15
                             }, this),
                             /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("div", {
@@ -6998,7 +6826,7 @@ function ExperienceSection() {
                                         children: entry.company
                                     }, void 0, false, {
                                         fileName: "[project]/app/components/sections/ExperienceSection.tsx",
-                                        lineNumber: 759,
+                                        lineNumber: 695,
                                         columnNumber: 17
                                     }, this),
                                     /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("p", {
@@ -7006,13 +6834,13 @@ function ExperienceSection() {
                                         children: entry.role
                                     }, void 0, false, {
                                         fileName: "[project]/app/components/sections/ExperienceSection.tsx",
-                                        lineNumber: 760,
+                                        lineNumber: 696,
                                         columnNumber: 17
                                     }, this)
                                 ]
                             }, void 0, true, {
                                 fileName: "[project]/app/components/sections/ExperienceSection.tsx",
-                                lineNumber: 758,
+                                lineNumber: 694,
                                 columnNumber: 15
                             }, this),
                             /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("p", {
@@ -7020,7 +6848,7 @@ function ExperienceSection() {
                                 children: entry.description
                             }, void 0, false, {
                                 fileName: "[project]/app/components/sections/ExperienceSection.tsx",
-                                lineNumber: 763,
+                                lineNumber: 699,
                                 columnNumber: 15
                             }, this),
                             buildMiniMarquee(entry.roleMarquee),
@@ -7033,7 +6861,7 @@ function ExperienceSection() {
                                     playsInline: true
                                 }, void 0, false, {
                                     fileName: "[project]/app/components/sections/ExperienceSection.tsx",
-                                    lineNumber: 769,
+                                    lineNumber: 705,
                                     columnNumber: 19
                                 }, this) : /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("div", {
                                     className: "exp-card-media-overlay",
@@ -7042,17 +6870,17 @@ function ExperienceSection() {
                                         children: "▶"
                                     }, void 0, false, {
                                         fileName: "[project]/app/components/sections/ExperienceSection.tsx",
-                                        lineNumber: 772,
+                                        lineNumber: 708,
                                         columnNumber: 21
                                     }, this)
                                 }, void 0, false, {
                                     fileName: "[project]/app/components/sections/ExperienceSection.tsx",
-                                    lineNumber: 771,
+                                    lineNumber: 707,
                                     columnNumber: 19
                                 }, this)
                             }, void 0, false, {
                                 fileName: "[project]/app/components/sections/ExperienceSection.tsx",
-                                lineNumber: 767,
+                                lineNumber: 703,
                                 columnNumber: 15
                             }, this),
                             /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("h4", {
@@ -7060,7 +6888,7 @@ function ExperienceSection() {
                                 children: "WHAT I DID"
                             }, void 0, false, {
                                 fileName: "[project]/app/components/sections/ExperienceSection.tsx",
-                                lineNumber: 777,
+                                lineNumber: 713,
                                 columnNumber: 15
                             }, this),
                             /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("ul", {
@@ -7070,23 +6898,23 @@ function ExperienceSection() {
                                         children: b
                                     }, i, false, {
                                         fileName: "[project]/app/components/sections/ExperienceSection.tsx",
-                                        lineNumber: 780,
+                                        lineNumber: 716,
                                         columnNumber: 19
                                     }, this))
                             }, void 0, false, {
                                 fileName: "[project]/app/components/sections/ExperienceSection.tsx",
-                                lineNumber: 778,
+                                lineNumber: 714,
                                 columnNumber: 15
                             }, this)
                         ]
                     }, void 0, true, {
                         fileName: "[project]/app/components/sections/ExperienceSection.tsx",
-                        lineNumber: 743,
+                        lineNumber: 679,
                         columnNumber: 13
                     }, this)
                 }, void 0, false, {
                     fileName: "[project]/app/components/sections/ExperienceSection.tsx",
-                    lineNumber: 742,
+                    lineNumber: 678,
                     columnNumber: 11
                 }, this);
             })(),
@@ -7098,7 +6926,7 @@ function ExperienceSection() {
                         children: "⌖"
                     }, void 0, false, {
                         fileName: "[project]/app/components/sections/ExperienceSection.tsx",
-                        lineNumber: 791,
+                        lineNumber: 727,
                         columnNumber: 11
                     }, this),
                     /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("span", {
@@ -7106,19 +6934,19 @@ function ExperienceSection() {
                         children: "find the hidden years"
                     }, void 0, false, {
                         fileName: "[project]/app/components/sections/ExperienceSection.tsx",
-                        lineNumber: 792,
+                        lineNumber: 728,
                         columnNumber: 11
                     }, this)
                 ]
             }, void 0, true, {
                 fileName: "[project]/app/components/sections/ExperienceSection.tsx",
-                lineNumber: 790,
+                lineNumber: 726,
                 columnNumber: 9
             }, this)
         ]
     }, void 0, true, {
         fileName: "[project]/app/components/sections/ExperienceSection.tsx",
-        lineNumber: 683,
+        lineNumber: 619,
         columnNumber: 5
     }, this);
 }
