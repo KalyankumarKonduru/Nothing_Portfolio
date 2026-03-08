@@ -1,0 +1,452 @@
+/* ═══════════════════════════════════════
+   Entry Screen — Nothing-inspired 3D Blocks
+   ═══════════════════════════════════════ */
+
+/* ── Root ── */
+.entry {
+  position: fixed;
+  inset: 0;
+  width: 100vw;
+  height: 100vh;
+  background: #0a0a0a;
+  overflow: hidden;
+  cursor: crosshair;
+  z-index: 100;
+}
+
+/* Subtle scan-line overlay for tech texture */
+.entry::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  background: repeating-linear-gradient(
+    to bottom,
+    transparent 0px,
+    transparent 3px,
+    rgba(0, 0, 0, 0.025) 3px,
+    rgba(0, 0, 0, 0.025) 4px
+  );
+  pointer-events: none;
+  z-index: 10;
+}
+
+/* ── Block grid container (3D perspective) ── */
+.entry__grid {
+  position: absolute;
+  inset: 0;
+  z-index: 1;
+  perspective: 1200px;
+  transform-style: preserve-3d;
+}
+
+/* ── Individual dot (Nothing Glyph style) ── */
+.entry__block {
+  position: absolute;
+  border-radius: 50%;
+  background: #fff;
+  opacity: 0;
+  will-change: transform, opacity;
+  backface-visibility: hidden;
+  transform: translateZ(0);
+}
+
+/* ── Cursor ambient glow overlay ── */
+.entry__cursor-glow {
+  position: absolute;
+  inset: 0;
+  z-index: 2;
+  pointer-events: none;
+  mix-blend-mode: screen;
+}
+
+/* ── UI Overlay ── */
+.entry__overlay {
+  position: absolute;
+  inset: 0;
+  z-index: 5;
+  pointer-events: none;
+}
+
+/* ── Hint ── */
+.entry__hint {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 12px;
+  animation: hintFadeIn 1s ease 8ms both;
+}
+
+.entry__hint-icon {
+  font-family: var(--font-mono), monospace;
+  font-size: 28px;
+  color: #ffffff40;
+  animation: hintPulse 2.2s ease-in-out infinite;
+}
+
+.entry__hint-text {
+  font-family: var(--font-mono), monospace;
+  font-size: 12px;
+  color: #ffffff30;
+  letter-spacing: 4px;
+  text-transform: lowercase;
+}
+
+/* ── Found counter (two dots) ── */
+.entry__found {
+  position: absolute;
+  top: 30px;
+  left: 50%;
+  transform: translateX(-50%);
+  display: flex;
+  gap: 12px;
+  align-items: center;
+}
+
+.entry__found-dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  border: 1px solid #ffffff30;
+  background: transparent;
+  transition:
+    background 4ms ease,
+    border-color 4ms ease,
+    box-shadow 4ms ease;
+}
+
+.entry__found-dot.lit {
+  background: #ffffff;
+  border-color: #ffffff;
+  box-shadow:
+    0 0 12px #ffffff80,
+    0 0 24px #ffffff40;
+}
+
+/* ── Corner details ── */
+.entry__coord,
+.entry__version {
+  position: absolute;
+  bottom: 20px;
+  font-family: var(--font-mono), monospace;
+  font-size: 9px;
+  color: #ffffff18;
+  letter-spacing: 2px;
+}
+.entry__coord {
+  left: 30px;
+}
+.entry__version {
+  right: 30px;
+}
+
+/* ── LED Strip Accents ── */
+.entry__led {
+  position: absolute;
+  z-index: 3;
+  pointer-events: none;
+}
+
+.entry__led--top,
+.entry__led--bottom {
+  left: 50%;
+  transform: translateX(-50%);
+  height: 1px;
+  width: 0;
+  background: linear-gradient(
+    90deg,
+    #ffffff00 0%,
+    #ffffff40 50%,
+    #ffffff00 100%
+  );
+  animation: ledChargeH 2.5s ease-out 500ms forwards;
+}
+.entry__led--top {
+  top: 20px;
+}
+.entry__led--bottom {
+  bottom: 20px;
+}
+
+.entry__led--left,
+.entry__led--right {
+  top: 50%;
+  transform: translateY(-50%);
+  width: 1px;
+  height: 0;
+  background: linear-gradient(
+    180deg,
+    #ffffff00 0%,
+    #ffffff20 50%,
+    #ffffff00 100%
+  );
+  animation: ledChargeV 0.5s ease-out 80ms forwards;
+}
+.entry__led--left {
+  left: 20px;
+}
+.entry__led--right {
+  right: 20px;
+}
+
+/* ── Vibrate phase: LED strips build cinematically ── */
+.phase-vibrate .entry__led--top,
+.phase-vibrate .entry__led--bottom {
+  width: min(360px, 50vw);
+  background: linear-gradient(
+    90deg,
+    #ffffff00 0%,
+    #ffffff 50%,
+    #ffffff00 100%
+  );
+  animation: ledCinematicH 4.3s ease-in forwards;
+}
+
+.phase-vibrate .entry__led--left,
+.phase-vibrate .entry__led--right {
+  height: min(240px, 30vh);
+  background: linear-gradient(
+    180deg,
+    #ffffff00 0%,
+    #ffffff80 50%,
+    #ffffff00 100%
+  );
+  animation: ledCinematicV 4.3s ease-in forwards;
+}
+
+/* ── Glyph corner marks ── */
+.entry__glyph-corner {
+  position: absolute;
+  width: 16px;
+  height: 16px;
+  z-index: 3;
+  pointer-events: none;
+  opacity: 0;
+  animation: fadeIn 600ms ease 1.2s forwards;
+}
+.entry__glyph-corner--tl {
+  top: 14px;
+  left: 14px;
+  border-top: 1px solid #ffffff20;
+  border-left: 1px solid #ffffff20;
+}
+.entry__glyph-corner--tr {
+  top: 14px;
+  right: 14px;
+  border-top: 1px solid #ffffff20;
+  border-right: 1px solid #ffffff20;
+}
+.entry__glyph-corner--bl {
+  bottom: 14px;
+  left: 14px;
+  border-bottom: 1px solid #ffffff20;
+  border-left: 1px solid #ffffff20;
+}
+.entry__glyph-corner--br {
+  bottom: 14px;
+  right: 14px;
+  border-bottom: 1px solid #ffffff20;
+  border-right: 1px solid #ffffff20;
+}
+
+/* ── Vibrate phase: corner marks build then flash ── */
+.phase-vibrate .entry__glyph-corner {
+  opacity: 1;
+  animation: cornerCinematic 4.3s ease-in forwards;
+}
+
+/* ── Converge phase: fade out decorations ── */
+.phase-converge .entry__led {
+  opacity: 0 !important;
+  transition: opacity 600ms ease-out;
+  animation: none !important;
+}
+.phase-converge .entry__glyph-corner {
+  opacity: 0 !important;
+  transition: opacity 600ms ease-out;
+  animation: none !important;
+}
+.phase-converge .entry__overlay {
+  opacity: 0;
+  transition: opacity 400ms ease-out;
+}
+
+/* ── Loading counter (convergence) ── */
+.entry__loader {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  z-index: 15;
+  font-family: var(--font-mono), monospace;
+  font-size: clamp(32px, 5vw, 56px);
+  font-weight: 300;
+  color: #ffffff;
+  letter-spacing: 6px;
+  opacity: 0.85;
+  pointer-events: none;
+  text-shadow: 0 0 40px rgba(255, 255, 255, 0.25);
+}
+
+/* ═══════════════════════════════════════
+   Keyframes
+   ═══════════════════════════════════════ */
+
+@keyframes hintFadeIn {
+  from {
+    opacity: 0;
+    transform: translate(-50%, -50%) translateY(8px);
+  }
+  to {
+    opacity: 1;
+    transform: translate(-50%, -50%) translateY(0);
+  }
+}
+
+@keyframes hintPulse {
+  0%,
+  100% {
+    opacity: 0.5;
+  }
+  50% {
+    opacity: 1;
+  }
+}
+
+@keyframes ledChargeH {
+  from {
+    width: 0;
+  }
+  to {
+    width: min(260px, 35vw);
+  }
+}
+
+@keyframes ledChargeV {
+  from {
+    height: 0;
+  }
+  to {
+    height: min(160px, 20vh);
+  }
+}
+
+/* LED strips: gentle pulse → accelerating flicker → bright hold → flash */
+@keyframes ledCinematicH {
+  0%   { opacity: 0.15; width: min(120px, 15vw); }
+  25%  { opacity: 0.35; width: min(200px, 28vw); }
+  50%  { opacity: 0.5;  width: min(280px, 40vw); }
+  60%  { opacity: 0.3; }
+  65%  { opacity: 0.7; }
+  70%  { opacity: 0.2; }
+  75%  { opacity: 0.85; }
+  80%  { opacity: 0.4; }
+  85%  { opacity: 0.95; width: min(340px, 48vw); }
+  88%  { opacity: 0.2; }  /* inhale dim */
+  92%  { opacity: 0.1; }
+  95%  { opacity: 1; width: min(360px, 50vw); }  /* detonation flash */
+  100% { opacity: 0; }
+}
+
+@keyframes ledCinematicV {
+  0%   { opacity: 0.15; height: min(80px, 10vh); }
+  25%  { opacity: 0.3;  height: min(140px, 18vh); }
+  50%  { opacity: 0.45; height: min(200px, 25vh); }
+  60%  { opacity: 0.25; }
+  65%  { opacity: 0.65; }
+  70%  { opacity: 0.15; }
+  75%  { opacity: 0.8; }
+  80%  { opacity: 0.35; }
+  85%  { opacity: 0.9;  height: min(230px, 28vh); }
+  88%  { opacity: 0.15; }
+  92%  { opacity: 0.1; }
+  95%  { opacity: 1;    height: min(240px, 30vh); }
+  100% { opacity: 0; }
+}
+
+/* Corner marks: subtle breathe → accelerating strobe → inhale dim → flash */
+@keyframes cornerCinematic {
+  0%   { opacity: 0.1;  border-color: #ffffff15; }
+  30%  { opacity: 0.4;  border-color: #ffffff40; }
+  50%  { opacity: 0.55; border-color: #ffffff60; }
+  60%  { opacity: 0.2;  border-color: #ffffff20; }
+  65%  { opacity: 0.7;  border-color: #ffffff90; }
+  72%  { opacity: 0.15; border-color: #ffffff15; }
+  78%  { opacity: 0.85; border-color: #ffffffcc; }
+  85%  { opacity: 0.3;  border-color: #ffffff30; }
+  88%  { opacity: 0.1;  border-color: #ffffff10; }  /* inhale */
+  95%  { opacity: 1;    border-color: #ffffff; }     /* flash */
+  100% { opacity: 0;    border-color: #ffffff00; }
+}
+
+@keyframes fadeIn {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+
+/* ═══════════════════════════════════════
+   Mobile
+   ═══════════════════════════════════════ */
+
+@media (max-width: 600px) {
+  .entry__coord,
+  .entry__version {
+    bottom: 10px;
+    font-size: 8px;
+  }
+  .entry__coord {
+    left: 12px;
+  }
+  .entry__version {
+    right: 12px;
+  }
+  .entry__led--top {
+    top: 10px;
+  }
+  .entry__led--bottom {
+    bottom: 10px;
+  }
+  .entry__led--left {
+    left: 10px;
+  }
+  .entry__led--right {
+    right: 10px;
+  }
+  .entry__glyph-corner--tl {
+    top: 6px;
+    left: 6px;
+  }
+  .entry__glyph-corner--tr {
+    top: 6px;
+    right: 6px;
+  }
+  .entry__glyph-corner--bl {
+    bottom: 6px;
+    left: 6px;
+  }
+  .entry__glyph-corner--br {
+    bottom: 6px;
+    right: 6px;
+  }
+}
+
+/* ═══════════════════════════════════════
+   Reduced motion
+   ═══════════════════════════════════════ */
+
+@media (prefers-reduced-motion: reduce) {
+  .entry__hint-icon {
+    animation: none;
+    opacity: 0.7;
+  }
+  .entry__block {
+    will-change: auto;
+  }
+}

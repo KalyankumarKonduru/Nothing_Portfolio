@@ -1,0 +1,14 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(npm uninstall vite @vitejs/plugin-react)",
+      "Bash(npm install next@latest)",
+      "Bash(npm install -D @types/node)",
+      "Bash(npm ls next react react-dom)",
+      "Bash(npm info next@latest peerDependencies)",
+      "Bash(npx next build)",
+      "mcp__Claude_Preview__preview_start",
+      "Bash(npm install animejs)"
+    ]
+  }
+}

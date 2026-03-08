@@ -1,0 +1,6 @@
+{
+  "version": 3,
+  "sources": [],
+  "sections": [
+    {"offset": {"line": 1, "column": 0}, "map": {"version":3,"sources":["turbopack:///[project]/app/globals.css"],"sourcesContent":["*,\n*::before,\n*::after {\n  box-sizing: border-box;\n  margin: 0;\n  padding: 0;\n}\n\nhtml,\nbody {\n  width: 100%;\n  min-height: 100%;\n  background: #0a0a0a;\n  color: #ffffff;\n  -webkit-font-smoothing: antialiased;\n  -moz-osx-font-smoothing: grayscale;\n}\n\n/* Scrollbar styling — minimal */\nbody::-webkit-scrollbar {\n  width: 4px;\n}\nbody::-webkit-scrollbar-track {\n  background: transparent;\n}\nbody::-webkit-scrollbar-thumb {\n  background: #ffffff15;\n  border-radius: 2px;\n}\nbody::-webkit-scrollbar-thumb:hover {\n  background: #ffffff30;\n}\n\n::selection {\n  background: #ffffff;\n  color: #0a0a0a;\n}\n\n@media (prefers-reduced-motion: reduce) {\n  *,\n  *::before,\n  *::after {\n    animation-duration: 0.001ms !important;\n    animation-iteration-count: 1 !important;\n    transition-duration: 0.001ms !important;\n  }\n}\n"],"names":[],"mappings":"AAAA;;;;;;AAQA;;;;;;;;;AAWA;;;;AAGA;;;;AAGA;;;;;AAIA;;;;AAIA;;;;;AAKA;EACE"}}]
+}

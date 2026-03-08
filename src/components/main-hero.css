@@ -1,0 +1,97 @@
+.hero-root {
+  width: 100%;
+  max-width: 1440px;
+  min-height: 900px;
+  background: #0a0a0a;
+  color: #fff;
+  border-bottom: 1px solid #ffffff14;
+  font-family: "JetBrains Mono", monospace;
+  position: relative;
+  animation: sectionFadeIn 900ms ease-out both;
+}
+.hero-nav {
+  height: 60px;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 0 80px;
+  border-bottom: 1px solid #ffffff30;
+}
+.hero-logo { font-size: 14px; font-weight: 500; }
+.hero-nav nav { display: flex; gap: 40px; font-size: 12px; }
+.hero-nav nav span { color: #ffffff60; }
+.hero-nav nav span { transition: color 220ms ease; }
+.hero-nav nav span:hover { color: #ffffffd0; }
+.hero-nav nav .active { color: #fff; }
+.hero-content {
+  padding: 100px 80px 80px;
+  min-height: 780px;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  gap: 40px;
+}
+.hero-tag { margin: 0; font-size: 12px; letter-spacing: 3px; color: #ffffff40; }
+.hero-content h2 {
+  margin: 0;
+  max-width: 900px;
+  font-size: clamp(34px, 5vw, 56px);
+  line-height: 1.15;
+  font-weight: 600;
+}
+.hero-desc {
+  margin: 0;
+  max-width: 600px;
+  font-size: 14px;
+  line-height: 1.8;
+  color: #ffffff50;
+  white-space: pre-line;
+}
+.hero-cta-row { display: flex; gap: 24px; align-items: center; }
+.hero-cta-row button {
+  background: transparent;
+  color: #fff;
+  border: 1px solid #fff;
+  padding: 14px 32px;
+  font-family: inherit;
+  font-size: 13px;
+  transition: transform 220ms ease, background-color 220ms ease, color 220ms ease;
+  animation: liftIn 800ms ease-out 450ms both;
+}
+.hero-cta-row button:hover {
+  transform: translateY(-2px);
+  background: #ffffff;
+  color: #0a0a0a;
+}
+.hero-cta-row span { color: #ffffff30; font-size: 12px; }
+.hero-status {
+  height: 40px;
+  border-top: 1px solid #ffffff20;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 0 80px;
+  font-size: 10px;
+  color: #ffffff30;
+  letter-spacing: 2px;
+}
+.hero-content > *:nth-child(1) { animation: liftIn 700ms ease-out 120ms both; }
+.hero-content > *:nth-child(2) { animation: liftIn 700ms ease-out 220ms both; }
+.hero-content > *:nth-child(3) { animation: liftIn 700ms ease-out 320ms both; }
+.hero-content > *:nth-child(4) { animation: liftIn 700ms ease-out 420ms both; }
+
+@keyframes sectionFadeIn {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+
+@keyframes liftIn {
+  from {
+    opacity: 0;
+    transform: translateY(16px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
