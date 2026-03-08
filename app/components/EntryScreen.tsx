@@ -1,7 +1,7 @@
 "use client";
 
 import { useRef, useEffect, useCallback, useState } from "react";
-import { animate } from "animejs";
+import anime from "animejs";
 import "./entry-screen.css";
 import { playClockTick, initAudio } from "./clock-tick";
 
@@ -799,7 +799,8 @@ export default function EntryScreen({ onEnter }: { onEnter: () => void }) {
         });
 
         /* Pop-out with elastic easing */
-        animate(kEls, {
+        anime({
+          targets: kEls,
           scale: [1, 1.35, 1.08],
           z: [0, 18, 6],
           duration: 700,

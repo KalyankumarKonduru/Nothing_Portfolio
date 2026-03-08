@@ -1,1 +1,873 @@
-/* ExperienceSection — particle text styles */
+/* ═══════════════════════════════════════
+   Experience Section — Nothing-inspired Career Timeline
+   ═══════════════════════════════════════ */
+
+/* ── Custom Properties ── */
+:root {
+  --exp-accent: #ffffff;
+  --exp-accent-light: #ffffff;
+  --exp-bg: #050505;
+  --exp-text: #ffffff;
+  --exp-text-muted: #ffffffaa;
+  --exp-text-dim: #ffffff40;
+  --exp-border: #ffffff20;
+  --exp-card-bg: #0a0a0a;
+  --exp-card-border: #ffffff12;
+  --exp-glow-spread: 220px;
+  --exp-marquee-speed: 18s;
+  --exp-mini-marquee-speed: 10s;
+  --exp-card-reveal-duration: 600ms;
+}
+
+/* ═══════════════════════════════════════
+   Section root
+   ═══════════════════════════════════════ */
+.exp-section {
+  position: relative;
+  width: 100vw;
+  height: 400vh; /* Expansive map scroll area */
+  background: var(--exp-bg);
+  overflow-x: hidden;
+  cursor: crosshair;
+  z-index: 15;
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity 600ms ease;
+  will-change: opacity;
+}
+
+.exp-section.active {
+  opacity: 1;
+  pointer-events: auto;
+}
+
+/* Subtle scan-line overlay (matches entry screen) */
+.exp-section::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  height: 100%;
+  background: repeating-linear-gradient(
+    to bottom,
+    transparent 0px,
+    transparent 3px,
+    rgba(0, 0, 0, 0.025) 3px,
+    rgba(0, 0, 0, 0.025) 4px
+  );
+  pointer-events: none;
+  z-index: 5;
+}
+
+/* ═══════════════════════════════════════
+   Dot grid canvas (full section coverage)
+   ═══════════════════════════════════════ */
+.exp-dot-canvas {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  z-index: 1;
+  pointer-events: none;
+}
+
+/* Individual dot in the grid */
+.exp-dot {
+  position: absolute;
+  width: 2px;
+  height: 2px;
+  border-radius: 50%;
+  background: #ffffff08;
+  will-change: opacity;
+  transform: translateZ(0);
+}
+
+.exp-dot.lit {
+  background: #ffffff30;
+  box-shadow: 0 0 4px #ffffff15;
+}
+
+/* ═══════════════════════════════════════
+   Cursor ambient glow (matches entry screen)
+   ═══════════════════════════════════════ */
+.exp-cursor-glow {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  z-index: 2;
+  pointer-events: none;
+  mix-blend-mode: screen;
+  will-change: background;
+  transform: translateZ(0);
+}
+
+/* ═══════════════════════════════════════
+   Content wrapper (no longer used — elements positioned on section root)
+   ═══════════════════════════════════════ */
+
+/* ═══════════════════════════════════════
+   Marquee banner — "CAREER & EXPERIENCE"
+   ═══════════════════════════════════════ */
+.exp-marquee {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100vw;
+  height: 56px;
+  background: var(--exp-accent);
+  overflow: hidden;
+  z-index: 4;
+  transform: translateZ(0);
+  will-change: transform;
+  box-shadow:
+    0 0 30px rgba(255, 255, 255, 0.15),
+    0 0 60px rgba(255, 255, 255, 0.05);
+}
+
+.exp-marquee::before,
+.exp-marquee::after {
+  content: "";
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  width: 60px;
+  z-index: 2;
+  pointer-events: none;
+}
+
+.exp-marquee::before {
+  left: 0;
+  background: linear-gradient(90deg, var(--exp-accent), transparent);
+}
+
+.exp-marquee::after {
+  right: 0;
+  background: linear-gradient(270deg, var(--exp-accent), transparent);
+}
+
+.exp-marquee-track {
+  display: flex;
+  align-items: center;
+  height: 100%;
+  animation: expMarquee var(--exp-marquee-speed) linear infinite;
+  will-change: transform;
+  transform: translateZ(0);
+}
+
+.exp-marquee-text {
+  flex-shrink: 0;
+  font-family: var(--font-mono), monospace;
+  font-size: 16px;
+  font-weight: 700;
+  color: #000000;
+  text-transform: uppercase;
+  letter-spacing: 8px;
+  white-space: nowrap;
+  padding: 0 40px;
+  line-height: 56px;
+  user-select: none;
+}
+
+/* Individual characters for anime.js dancing */
+.exp-marquee-char {
+  display: inline-block;
+  will-change: transform;
+  transform-origin: center bottom;
+}
+
+/* Diamond separator between repeated texts */
+.exp-marquee-sep {
+  flex-shrink: 0;
+  font-family: var(--font-mono), monospace;
+  font-size: 10px;
+  color: rgba(0,0,0,0.5);
+  padding: 0 16px;
+  user-select: none;
+}
+
+/* ═══════════════════════════════════════
+   Timeline container (no longer used)
+   ═══════════════════════════════════════ */
+
+/* ═══════════════════════════════════════
+   Zigzag SVG line
+   ═══════════════════════════════════════ */
+.exp-zigzag-line {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100vw;
+  height: 100%;
+  z-index: 3;
+  pointer-events: none;
+}
+
+.exp-zigzag-path {
+  fill: none;
+  stroke: url(#expZigzagGradient);
+  stroke-width: 2;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+  filter: drop-shadow(0 0 6px #ff0033) drop-shadow(0 0 12px rgba(255, 0, 51, 0.4));
+  transition: stroke-dashoffset 0.6s ease-out;
+  transform: translateZ(0);
+}
+
+/* Glow pulse overlay on the line */
+.exp-zigzag-glow {
+  fill: none;
+  stroke: #ff0033;
+  stroke-width: 4;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+  opacity: 0.15;
+  filter: blur(6px);
+  transition: stroke-dashoffset 0.6s ease-out;
+}
+
+/* ═══════════════════════════════════════
+   Year markers
+   ═══════════════════════════════════════ */
+.exp-year {
+  position: absolute;
+  z-index: 6;
+  width: 160px;
+  height: 80px;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  align-items: center;
+  cursor: pointer;
+  opacity: 0;
+  transition: opacity 500ms ease, transform 500ms ease;
+  transform: translate(-50%, -50%) translateY(10px) translateZ(0);
+  will-change: opacity, transform;
+  cursor: pointer;
+}
+
+.exp-year.revealed {
+  opacity: 1;
+  transform: translate(-50%, -50%) translateY(0) translateZ(0);
+}
+
+.exp-year.active .exp-year-number {
+  color: var(--exp-text);
+  text-shadow:
+    0 0 20px rgba(255, 255, 255, 0.6),
+    0 0 40px rgba(255, 255, 255, 0.3);
+}
+
+.exp-year-number {
+  font-family: var(--font-mono), monospace;
+  font-size: clamp(36px, 5vw, 64px);
+  font-weight: 300;
+  color: var(--exp-text-dim);
+  letter-spacing: 4px;
+  line-height: 1;
+  transition: color 400ms ease, text-shadow 400ms ease, opacity 400ms ease;
+  user-select: none;
+  opacity: 0;
+}
+
+.exp-year.revealed .exp-year-number {
+  opacity: 0.2;
+}
+
+.exp-year.revealed:hover .exp-year-number {
+  opacity: 0.8;
+  color: #fff;
+}
+
+.exp-year.active .exp-year-number {
+  color: var(--exp-text);
+  opacity: 1;
+  text-shadow:
+    0 0 20px rgba(255, 255, 255, 0.6),
+    0 0 40px rgba(255, 255, 255, 0.3);
+}
+
+/* Year positions now set via inline styles from JS pixel calculations */
+
+/* ═══════════════════════════════════════
+   Company detail cards
+   ═══════════════════════════════════════ */
+/* ═══════════════════════════════════════
+   Card overlay — centered modal backdrop
+   ═══════════════════════════════════════ */
+.exp-card-overlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100vw;
+  height: 100vh;
+  z-index: 9999;
+  display: block;
+  background: var(--exp-bg);
+  animation: expFadeIn 300ms ease both;
+  cursor: pointer;
+  overflow-y: auto;
+  overflow-x: hidden;
+}
+
+.exp-card {
+  position: relative;
+  z-index: 21;
+  width: 100vw;
+  min-height: 100vh;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  background: transparent;
+  border: none;
+  border-radius: 0;
+  padding: 100px 10vw;
+  opacity: 0;
+  transform: translateY(30px) scale(0.96) translateZ(0);
+  will-change: opacity, transform;
+  cursor: default;
+  transition: opacity var(--exp-card-reveal-duration) ease, transform var(--exp-card-reveal-duration) ease;
+}
+
+.exp-card.visible {
+  opacity: 1;
+  transform: translateY(0) scale(1) translateZ(0);
+  animation: expCardReveal var(--exp-card-reveal-duration) ease both;
+}
+
+/* Close button */
+.exp-card-close {
+  position: fixed;
+  top: 32px;
+  right: 32px;
+  background: none;
+  border: 1px solid var(--exp-border);
+  color: var(--exp-text-dim);
+  font-family: var(--font-mono), monospace;
+  font-size: 24px;
+  width: 48px;
+  height: 48px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  transition: color 200ms ease, border-color 200ms ease, background 200ms ease;
+  z-index: 30;
+}
+
+.exp-card-close:hover {
+  color: var(--exp-text);
+  border-color: var(--exp-accent);
+  background: rgba(255, 255, 255, 0.1);
+}
+
+/* Year badge inside card */
+.exp-card-year-badge {
+  font-family: var(--font-mono), monospace;
+  font-size: 16px;
+  font-weight: 600;
+  color: var(--exp-accent-light);
+  letter-spacing: 4px;
+  text-transform: uppercase;
+  margin-bottom: 24px;
+  padding: 6px 16px;
+  border: 1px solid rgba(255, 255, 255, 0.25);
+  border-radius: 2px;
+  display: inline-block;
+  background: rgba(255, 255, 255, 0.06);
+}
+
+/* Accent top bar on card */
+.exp-card::before {
+  content: "";
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  height: 4px;
+  background: linear-gradient(
+    90deg,
+    transparent,
+    var(--exp-accent),
+    transparent
+  );
+  opacity: 0.6;
+}
+
+/* Card positions now handled by centered modal overlay */
+
+/* ── Card header ── */
+.exp-card-header {
+  margin-bottom: 32px;
+}
+
+.exp-card-company {
+  font-family: var(--font-mono), monospace;
+  font-size: clamp(32px, 5vw, 64px);
+  font-weight: 600;
+  color: var(--exp-text);
+  letter-spacing: 4px;
+  text-transform: uppercase;
+  margin: 0 0 12px;
+}
+
+.exp-card-role {
+  font-family: var(--font-mono), monospace;
+  font-size: clamp(16px, 2vw, 24px);
+  color: var(--exp-text-muted);
+  letter-spacing: 2px;
+  text-transform: uppercase;
+  margin: 0;
+}
+
+/* ── Card description ── */
+.exp-card-desc {
+  font-family: var(--font-mono), monospace;
+  font-size: clamp(16px, 1.5vw, 20px);
+  line-height: 1.8;
+  color: var(--exp-text-muted);
+  letter-spacing: 0.5px;
+  margin: 0 0 40px;
+  max-width: 800px;
+}
+
+/* ═══════════════════════════════════════
+   Mini marquee inside card (role type)
+   ═══════════════════════════════════════ */
+.exp-mini-marquee {
+  width: 100%;
+  max-width: 800px;
+  height: 48px;
+  overflow: hidden;
+  background: rgba(255, 255, 255, 0.08); /* Replaced pink */
+  border: 1px solid rgba(255, 255, 255, 0.15); /* Replaced pink */
+  border-radius: 2px;
+  margin-bottom: 40px;
+  position: relative;
+}
+
+.exp-mini-marquee::before,
+.exp-mini-marquee::after {
+  content: "";
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  width: 40px;
+  z-index: 1;
+  pointer-events: none;
+}
+
+.exp-mini-marquee::before {
+  left: 0;
+  background: linear-gradient(90deg, var(--exp-bg), transparent);
+}
+
+.exp-mini-marquee::after {
+  right: 0;
+  background: linear-gradient(270deg, var(--exp-bg), transparent);
+}
+
+.exp-mini-marquee-track {
+  display: flex;
+  align-items: center;
+  height: 100%;
+  animation: expMarquee var(--exp-mini-marquee-speed) linear infinite;
+  will-change: transform;
+  transform: translateZ(0);
+}
+
+.exp-mini-marquee-text {
+  flex-shrink: 0;
+  font-family: var(--font-mono), monospace;
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--exp-accent-light);
+  text-transform: uppercase;
+  letter-spacing: 6px;
+  white-space: nowrap;
+  padding: 0 30px;
+  line-height: 48px;
+  user-select: none;
+}
+
+/* ═══════════════════════════════════════
+   Media / video area
+   ═══════════════════════════════════════ */
+.exp-card-media {
+  width: 100%;
+  aspect-ratio: 16 / 9;
+  background: #0a0a0a;
+  border: 1px solid var(--exp-card-border);
+  border-radius: 2px;
+  margin-bottom: 20px;
+  overflow: hidden;
+  position: relative;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.exp-card-media video,
+.exp-card-media img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+/* Play indicator overlay */
+.exp-card-media-overlay {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: rgba(0, 0, 0, 0.3);
+  opacity: 1;
+  transition: opacity 300ms ease;
+}
+
+.exp-card-media-overlay:hover {
+  opacity: 0;
+}
+
+.exp-card-media-icon {
+  font-family: var(--font-mono), monospace;
+  font-size: 24px;
+  color: var(--exp-text-dim);
+}
+
+/* ═══════════════════════════════════════
+   "What I did" section
+   ═══════════════════════════════════════ */
+.exp-card-section-title {
+  font-family: var(--font-mono), monospace;
+  font-size: 10px;
+  font-weight: 600;
+  color: var(--exp-text-dim);
+  letter-spacing: 4px;
+  text-transform: uppercase;
+  margin: 0 0 12px;
+}
+
+.exp-card-bullets {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.exp-card-bullet {
+  font-family: var(--font-mono), monospace;
+  font-size: 11px;
+  line-height: 1.7;
+  color: var(--exp-text-muted);
+  letter-spacing: 0.3px;
+  padding-left: 16px;
+  position: relative;
+}
+
+.exp-card-bullet::before {
+  content: "◆";
+  position: absolute;
+  left: 0;
+  top: 0;
+  font-size: 6px;
+  color: var(--exp-accent);
+  line-height: 1.7;
+  transform: translateY(2px);
+}
+
+/* ═══════════════════════════════════════
+   Keyframes
+   ═══════════════════════════════════════ */
+
+/* Marquee — infinite left scroll */
+@keyframes expMarquee {
+  0% {
+    transform: translateX(0);
+  }
+  100% {
+    transform: translateX(-50%);
+  }
+}
+
+/* Glow pulse — breathing opacity */
+@keyframes expGlowPulse {
+  0%,
+  100% {
+    opacity: 0.6;
+  }
+  50% {
+    opacity: 1;
+  }
+}
+
+/* Card reveal — scale up + fade in */
+@keyframes expCardReveal {
+  0% {
+    opacity: 0;
+    transform: translateY(30px) scale(0.96) translateZ(0);
+  }
+  100% {
+    opacity: 1;
+    transform: translateY(0) scale(1) translateZ(0);
+  }
+}
+
+/* Year number pulse when active */
+@keyframes expYearPulse {
+  0%,
+  100% {
+    text-shadow:
+      0 0 20px rgba(192, 38, 211, 0.6),
+      0 0 40px rgba(192, 38, 211, 0.3);
+  }
+  50% {
+    text-shadow:
+      0 0 30px rgba(192, 38, 211, 0.8),
+      0 0 60px rgba(192, 38, 211, 0.5);
+  }
+}
+
+/* Fade in utility */
+@keyframes expFadeIn {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+
+/* ═══════════════════════════════════════
+   Active year glow animation
+   ═══════════════════════════════════════ */
+.exp-year.active .exp-year-number {
+  animation: expYearPulse 2.4s ease-in-out infinite;
+}
+
+/* ═══════════════════════════════════════
+   Staggered card bullet reveals
+   ═══════════════════════════════════════ */
+.exp-card.visible .exp-card-bullet {
+  opacity: 0;
+  animation: expFadeIn 400ms ease forwards;
+}
+
+.exp-card.visible .exp-card-bullet:nth-child(1) { animation-delay: 200ms; }
+.exp-card.visible .exp-card-bullet:nth-child(2) { animation-delay: 320ms; }
+.exp-card.visible .exp-card-bullet:nth-child(3) { animation-delay: 440ms; }
+.exp-card.visible .exp-card-bullet:nth-child(4) { animation-delay: 560ms; }
+.exp-card.visible .exp-card-bullet:nth-child(5) { animation-delay: 680ms; }
+.exp-card.visible .exp-card-bullet:nth-child(6) { animation-delay: 800ms; }
+
+/* ═══════════════════════════════════════
+   Mobile (max-width: 600px)
+   ═══════════════════════════════════════ */
+@media (max-width: 600px) {
+  .exp-content {
+    padding: 40px 0 80px;
+  }
+
+  /* Marquee */
+  .exp-marquee {
+    height: 42px;
+    top: 30%;
+  }
+
+  .exp-marquee-text {
+    font-size: 11px;
+    letter-spacing: 5px;
+    line-height: 42px;
+    padding: 0 20px;
+  }
+
+  /* Timeline */
+
+  /* Year markers — positions set by JS */
+
+  .exp-year-number {
+    font-size: clamp(28px, 8vw, 40px);
+    letter-spacing: 2px;
+  }
+
+  /* Cards — full width in modal */
+  .exp-card {
+    width: 92vw;
+    max-height: 80vh;
+    padding: 24px 20px;
+  }
+
+  .exp-card-company {
+    font-size: 14px;
+    letter-spacing: 2px;
+  }
+
+  .exp-card-role {
+    font-size: 10px;
+    letter-spacing: 1.5px;
+  }
+
+  .exp-card-desc {
+    font-size: 11px;
+    line-height: 1.7;
+  }
+
+  .exp-mini-marquee {
+    height: 26px;
+  }
+
+  .exp-mini-marquee-text {
+    font-size: 8px;
+    letter-spacing: 4px;
+    line-height: 26px;
+    padding: 0 12px;
+  }
+
+  .exp-card-section-title {
+    font-size: 9px;
+    letter-spacing: 3px;
+  }
+
+  .exp-card-bullet {
+    font-size: 10px;
+    padding-left: 14px;
+  }
+
+  .exp-card-bullet::before {
+    font-size: 5px;
+  }
+
+  /* Zigzag line thinner on mobile */
+  .exp-zigzag-path {
+    stroke-width: 1.5;
+  }
+
+  .exp-zigzag-glow {
+    stroke-width: 3;
+  }
+}
+
+/* ═══════════════════════════════════════
+   Tablet (601px – 1024px)
+   ═══════════════════════════════════════ */
+@media (min-width: 601px) and (max-width: 1024px) {
+  .exp-content {
+    padding: 60px 0 100px;
+  }
+
+  /* Marquee */
+  .exp-marquee {
+    height: 48px;
+  }
+
+  .exp-marquee-text {
+    font-size: 13px;
+    letter-spacing: 6px;
+    line-height: 48px;
+    padding: 0 28px;
+  }
+
+  /* Timeline */
+  .exp-timeline {
+    padding: 50px 24px;
+  }
+
+  /* Year markers — positions set by JS */
+
+  .exp-year-number {
+    font-size: clamp(30px, 4vw, 48px);
+  }
+
+  /* Cards in modal */
+  .exp-card {
+    width: clamp(320px, 50vw, 460px);
+    padding: 28px 28px;
+  }
+
+  .exp-card-company {
+    font-size: 16px;
+  }
+
+  .exp-card-desc {
+    font-size: 11px;
+  }
+
+  .exp-mini-marquee-text {
+    font-size: 9px;
+    letter-spacing: 5px;
+  }
+}
+
+/* ═══════════════════════════════════════
+   Hint overlay
+   ═══════════════════════════════════════ */
+.exp-hint {
+  position: absolute;
+  top: 50vh;
+  left: 0;
+  width: 100vw;
+  text-align: center;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  z-index: 10;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 12px;
+  animation: expFadeIn 1s ease both;
+  pointer-events: none;
+}
+
+.exp-hint-icon {
+  font-family: var(--font-mono), monospace;
+  font-size: 28px;
+  color: #ffffff40;
+}
+
+.exp-hint-text {
+  font-family: var(--font-mono), monospace;
+  font-size: 12px;
+  color: #ffffff30;
+  letter-spacing: 4px;
+  text-transform: uppercase;
+}
+
+/* ═══════════════════════════════════════
+   Reduced motion
+   ═══════════════════════════════════════ */
+@media (prefers-reduced-motion: reduce) {
+  .exp-marquee-track,
+  .exp-mini-marquee-track {
+    animation: none;
+  }
+
+  .exp-zigzag-path,
+  .exp-zigzag-glow {
+    animation: none;
+    stroke-dashoffset: 0;
+  }
+
+  .exp-card.visible {
+    animation: none;
+  }
+
+  .exp-card.visible .exp-card-bullet {
+    animation: none;
+    opacity: 1;
+  }
+
+  .exp-year.active .exp-year-number {
+    animation: none;
+  }
+
+  .exp-year,
+  .exp-card,
+  .exp-dot {
+    will-change: auto;
+  }
+}

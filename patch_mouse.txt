@@ -1,0 +1,22 @@
+    /* ── Mouse / touch tracking ── */
+    useEffect(() => {
+      const handleMouse = (e: MouseEvent) => {
+        screenMouseRef.current = { x: e.clientX, y: e.clientY };
+        if (!giantMapRef.current) return;
+        const rect = giantMapRef.current.getBoundingClientRect();
+        mouseRef.current = { x: e.clientX - rect.left, y: e.clientY - rect.top };
+      };
+      const handleTouch = (e: TouchEvent) => {
+        const t = e.touches[0];
+        if (!t) return;
+        screenMouseRef.current = { x: t.clientX, y: t.clientY };
+        if (!giantMapRef.current) return;
+        const rect = giantMapRef.current.getBoundingClientRect();
+        mouseRef.current = { x: t.clientX - rect.left, y: t.clientY - rect.top };
+      };
+      window.addEventListener("mousemove", handleMouse);
+      window.addEventListener("touchmove", handleTouch, { passive: true });
+      return () => {
+        window.removeEventListener("mousemove", handleMouse);
+        window.removeEventListener("touchmove", handleTouch);    useE;
+    }, []);

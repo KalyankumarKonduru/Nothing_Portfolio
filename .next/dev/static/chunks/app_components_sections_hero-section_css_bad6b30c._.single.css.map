@@ -1,6 +1,0 @@
-{
-  "version": 3,
-  "sources": [],
-  "sections": [
-    {"offset": {"line": 1, "column": 0}, "map": {"version":3,"sources":["turbopack:///[project]/app/components/sections/hero-section.css"],"sourcesContent":["/* HeroSection — particle text styles */\n/* Styles are rendered via canvas; this file reserved for future overlays */\n"],"names":[],"mappings":""}}]
-}

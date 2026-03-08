@@ -1,7 +1,7 @@
 "use client";
 
 import { useRef, useEffect } from "react";
-import { animate } from "animejs";
+import anime from "animejs";
 import "./particle-canvas.css";
 import { stampLines, stampTextScaledCenters, textPixelWidthScaled } from "./pixel-font";
 import { playClockTick, initAudio } from "./clock-tick";
@@ -560,6 +560,19 @@ export default function ParticleCanvas() {
         tgtX = tgtX * (1 - centerPull) + cX * centerPull;
         tgtY = tgtY * (1 - centerPull) + cY * centerPull;
 
+        /* Converge toward cursor when scrolling from hero toward experience */
+        if (progress > 0.5 && progress < 2.15) {
+          const convMx = soundMouse.x;
+          const convMy = soundMouse.y;
+          if (convMx > 0 && convMy > 0) {
+            /* Ramp 0→1 from progress 0.5 to ~1.7, quadratic for dramatic pull */
+            const convergeFactor = Math.min(1, (progress - 0.5) / 1.2);
+            const pullStr = convergeFactor * convergeFactor * 0.85;
+            tgtX = tgtX + (convMx - tgtX) * pullStr;
+            tgtY = tgtY + (convMy - tgtY) * pullStr;
+          }
+        }
+
         /* ── Movement: static on hero, organic drift elsewhere ── */
         if (isHeroSettled) {
           /* Fast snap to target, zero drift */
@@ -625,7 +638,8 @@ export default function ParticleCanvas() {
             /* Trigger anime.js pop-forward on first reveal */
             if (!heroDotRevealed[d] && g > 0.25) {
               heroDotRevealed[d] = true;
-              animate(heroDotEls[d], {
+              anime({
+                targets: heroDotEls[d],
                 scale: [1, 1.35, 1.08],
                 z: [0, 18, 6],
                 duration: 700,

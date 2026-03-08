@@ -100,7 +100,7 @@ self.__SERVER_FILES_MANIFEST={
         "transform": "lodash/{{member}}"
       }
     },
-    "outputFileTracingRoot": "/Users/kalyankumarkonduru/Downloads/nothing",
+    "outputFileTracingRoot": "/Users/kalyankumarkonduru/Nothing_Portfolio",
     "cacheComponents": false,
     "cacheLife": {
       "default": {
@@ -293,11 +293,11 @@ self.__SERVER_FILES_MANIFEST={
     "bundlePagesRouterDependencies": false,
     "configFileName": "next.config.ts",
     "turbopack": {
-      "root": "/Users/kalyankumarkonduru/Downloads/nothing"
+      "root": "/Users/kalyankumarkonduru/Nothing_Portfolio"
     },
     "distDirRoot": ".next"
   },
-  "appDir": "/Users/kalyankumarkonduru/Downloads/nothing",
+  "appDir": "/Users/kalyankumarkonduru/Nothing_Portfolio",
   "relativeAppDir": "",
   "files": [
     ".next/routes-manifest.json",
