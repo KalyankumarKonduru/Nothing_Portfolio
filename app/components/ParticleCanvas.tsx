@@ -166,12 +166,13 @@ export default function ParticleCanvas() {
         const el = document.createElement("div");
         el.style.cssText = `
           position:absolute;
-          left:${px - entryBlockSize / 2}px;
-          top:${py - entryBlockSize / 2}px;
-          width:${entryBlockSize}px;
-          height:${entryBlockSize}px;
+          left:${px - entryBlockSize * 0.65}px;
+          top:${py - entryBlockSize * 0.65}px;
+          width:${entryBlockSize * 1.3}px;
+          height:${entryBlockSize * 1.3}px;
           border-radius:50%;
           background:#fff;
+          box-shadow:0 0 6px 2px rgba(255,255,255,0.3);
           opacity:0;
           will-change:transform,opacity;
           transform-style:preserve-3d;
@@ -240,6 +241,13 @@ export default function ParticleCanvas() {
 
     /* ── Flashlight glow state — cursor-proximity reveal ── */
     const glows = new Float32Array(N); /* 0 = invisible, 1 = fully lit */
+    const pulseStart = new Float32Array(N);
+    const PULSE_DUR = 600;
+    let pcPrevMx = -9999;
+    let pcPrevMy = -9999;
+    let pcWaveActive = false;
+    let pcStoppedFrames = 0;
+    const PC_WAVE_SPEED = 0.4;
     const FLASH_RADIUS = 180;
     const FLASH_R2 = FLASH_RADIUS * FLASH_RADIUS;
     const FLASH_INV_R = 1 / FLASH_RADIUS;
@@ -341,9 +349,10 @@ export default function ParticleCanvas() {
               const dist = Math.sqrt(d2);
               const falloff = 1 - dist * FLASH_INV_R;
               let target = falloff * falloff; /* quadratic falloff */
-              /* Text dots get brighter near cursor (like entry screen K proximity) */
-              if (isHeroCenterDot[idx] && dist < 140) {
-                target = Math.min(1, target * 1.4);
+              /* Text dots: use linear falloff for much brighter pop,
+                 same approach as year dots in experience section */
+              if (isHeroCenterDot[idx] && dist < 200) {
+                target = Math.max(target, falloff * 0.95);
               }
               if (target > glows[idx]) {
                 glows[idx] = glows[idx] + (target - glows[idx]) * 0.55;
@@ -354,6 +363,48 @@ export default function ParticleCanvas() {
       } else if (!isOnHero) {
         /* Reset when leaving hero */
         for (let i = 0; i < N; i++) { glows[i] = 0; }
+      }
+
+      /* ── Directional wave pulse (hero only) ── */
+      if (isOnHero) {
+        const wmx = soundMouse.x;
+        const wmy = soundMouse.y;
+        const velX = wmx - pcPrevMx;
+        const velY = wmy - pcPrevMy;
+        const speed = Math.sqrt(velX * velX + velY * velY);
+
+        if (speed > 3) {
+          pcStoppedFrames = 0;
+          pcWaveActive = true;
+          const dirX = velX / speed;
+          const dirY = velY / speed;
+          const now = performance.now();
+
+          for (let i = 0; i < N; i++) {
+            const gx = i % cols;
+            const gy = Math.floor(i / cols);
+            const px = oX + gx * step + halfBlock;
+            const py = oY + gy * step + halfBlock;
+            const toX = px - wmx;
+            const toY = py - wmy;
+            const proj = toX * dirX + toY * dirY;
+            if (proj > 0 && proj < 1200) {
+              const perp = Math.abs(toX * (-dirY) + toY * dirX);
+              if (perp < FLASH_RADIUS * 1.5) {
+                if (pulseStart[i] > 0) {
+                  const el = now - pulseStart[i];
+                  if (el >= 0 && el < PULSE_DUR) continue;
+                }
+                pulseStart[i] = now + proj / PC_WAVE_SPEED;
+              }
+            }
+          }
+        } else {
+          pcStoppedFrames++;
+          if (pcStoppedFrames > 10) pcWaveActive = false;
+        }
+        pcPrevMx = wmx;
+        pcPrevMy = wmy;
       }
 
       /* Fade hero overlay based on scroll — gone by 30% scroll */
@@ -505,7 +556,18 @@ export default function ParticleCanvas() {
           if (heroBlend > 0.01) {
             /* On hero: text dots are DOM (for anime.js 3D pop); pond dots stay on canvas */
             if (isHeroGridDot[i]) {
-              const drawSize = spriteSize + (heroSpriteSize - spriteSize) * heroBlend;
+              /* Stagger pulse scale */
+              let pScale = 1;
+              if (pulseStart[i] > 0) {
+                const pNow = performance.now();
+                const pEl = pNow - pulseStart[i];
+                if (pEl >= 0 && pEl < PULSE_DUR) {
+                  pScale = 1 + 0.3 * Math.sin((pEl / PULSE_DUR) * Math.PI);
+                } else if (pEl >= PULSE_DUR) {
+                  pulseStart[i] = 0;
+                }
+              }
+              const drawSize = (spriteSize + (heroSpriteSize - spriteSize) * heroBlend) * pScale;
               const halfDraw = drawSize / 2;
               ctx.drawImage(heroDotSprite, p.x - halfDraw, p.y - halfDraw, drawSize, drawSize);
             }
@@ -537,6 +599,19 @@ export default function ParticleCanvas() {
                 duration: 700,
                 ease: "outElastic(1, .5)",
               });
+            }
+
+            /* Wave pulse scale for text dots (after pop is done) */
+            if (heroDotRevealed[d] && pulseStart[idx] > 0) {
+              const pNow = performance.now();
+              const pEl = pNow - pulseStart[idx];
+              if (pEl >= 0 && pEl < PULSE_DUR) {
+                const s = 1 + 0.3 * Math.sin((pEl / PULSE_DUR) * Math.PI);
+                heroDotEls[d].style.transform = `scale(${s})`;
+              } else if (pEl >= PULSE_DUR) {
+                pulseStart[idx] = 0;
+                heroDotEls[d].style.transform = "";
+              }
             }
           }
         }
@@ -571,7 +646,7 @@ export default function ParticleCanvas() {
           position: "fixed",
           inset: 0,
           pointerEvents: "none",
-          zIndex: 2,
+          zIndex: 12,
           perspective: 800,
           transformStyle: "preserve-3d" as React.CSSProperties["transformStyle"],
         }}

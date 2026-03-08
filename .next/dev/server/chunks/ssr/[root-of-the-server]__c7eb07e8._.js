@@ -668,6 +668,13 @@ function EntryScreen({ onEnter }) {
         /* ── Cursor-reactive glow loop (RAF) ── */ const RADIUS = 180;
         const R2 = RADIUS * RADIUS;
         const INV_R = 1 / RADIUS;
+        const entryPulseStart = new Float32Array(N);
+        const ENTRY_PULSE_DUR = 600;
+        let entryPrevMx = -9999;
+        let entryPrevMy = -9999;
+        let entryStoppedFrames = 0;
+        let entryWaveActive = false;
+        const ENTRY_WAVE_SPEED = 0.4;
         let time = 0;
         let lastTickX = -9999;
         let lastTickY = -9999;
@@ -766,6 +773,53 @@ function EntryScreen({ onEnter }) {
             }
             /* Update cursor glow overlay */ if (glowRef.current) {
                 glowRef.current.style.background = `radial-gradient(circle 200px at ${mx}px ${my}px, rgba(255,255,255,0.04), transparent 70%)`;
+            }
+            /* ── Directional wave pulse ── */ {
+                const velX = mx - entryPrevMx;
+                const velY = my - entryPrevMy;
+                const speed = Math.sqrt(velX * velX + velY * velY);
+                if (speed > 3) {
+                    entryStoppedFrames = 0;
+                    entryWaveActive = true;
+                    const dirX = velX / speed;
+                    const dirY = velY / speed;
+                    const now = performance.now();
+                    for(let i = 0; i < N; i++){
+                        const toX = centersX[i] - mx;
+                        const toY = centersY[i] - my;
+                        const proj = toX * dirX + toY * dirY;
+                        if (proj > 0 && proj < 1200) {
+                            const perp = Math.abs(toX * -dirY + toY * dirX);
+                            if (perp < RADIUS * 1.5) {
+                                if (entryPulseStart[i] > 0) {
+                                    const el = now - entryPulseStart[i];
+                                    if (el >= 0 && el < ENTRY_PULSE_DUR) continue;
+                                }
+                                entryPulseStart[i] = now + proj / ENTRY_WAVE_SPEED;
+                            }
+                        }
+                    }
+                } else {
+                    entryStoppedFrames++;
+                    if (entryStoppedFrames > 10) entryWaveActive = false;
+                }
+                entryPrevMx = mx;
+                entryPrevMy = my;
+            }
+            /* Apply pulse scale to DOM dots */ {
+                const pNow = performance.now();
+                for(let i = 0; i < N; i++){
+                    if (entryPulseStart[i] > 0) {
+                        const pEl = pNow - entryPulseStart[i];
+                        if (pEl >= 0 && pEl < ENTRY_PULSE_DUR) {
+                            const s = 1 + 0.3 * Math.sin(pEl / ENTRY_PULSE_DUR * Math.PI);
+                            els[i].style.transform = `scale(${s})`;
+                        } else if (pEl >= ENTRY_PULSE_DUR) {
+                            entryPulseStart[i] = 0;
+                            els[i].style.transform = "";
+                        }
+                    }
+                }
             }
             rafRef.current = requestAnimationFrame(glowLoop);
         };
@@ -1116,7 +1170,7 @@ function EntryScreen({ onEnter }) {
                 className: "entry__grid"
             }, void 0, false, {
                 fileName: "[project]/app/components/EntryScreen.tsx",
-                lineNumber: 848,
+                lineNumber: 908,
                 columnNumber: 7
             }, this),
             /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])("div", {
@@ -1128,7 +1182,7 @@ function EntryScreen({ onEnter }) {
                 children: "0%"
             }, void 0, false, {
                 fileName: "[project]/app/components/EntryScreen.tsx",
-                lineNumber: 851,
+                lineNumber: 911,
                 columnNumber: 7
             }, this),
             /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])("div", {
@@ -1136,7 +1190,7 @@ function EntryScreen({ onEnter }) {
                 className: "entry__cursor-glow"
             }, void 0, false, {
                 fileName: "[project]/app/components/EntryScreen.tsx",
-                lineNumber: 854,
+                lineNumber: 914,
                 columnNumber: 7
             }, this),
             /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])("div", {
@@ -1150,7 +1204,7 @@ function EntryScreen({ onEnter }) {
                                 children: "⌖"
                             }, void 0, false, {
                                 fileName: "[project]/app/components/EntryScreen.tsx",
-                                lineNumber: 860,
+                                lineNumber: 920,
                                 columnNumber: 13
                             }, this),
                             /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])("span", {
@@ -1158,13 +1212,13 @@ function EntryScreen({ onEnter }) {
                                 children: "find the hidden K's"
                             }, void 0, false, {
                                 fileName: "[project]/app/components/EntryScreen.tsx",
-                                lineNumber: 861,
+                                lineNumber: 921,
                                 columnNumber: 13
                             }, this)
                         ]
                     }, void 0, true, {
                         fileName: "[project]/app/components/EntryScreen.tsx",
-                        lineNumber: 859,
+                        lineNumber: 919,
                         columnNumber: 11
                     }, this),
                     (phase === "explore" || phase === "found1") && /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])("div", {
@@ -1174,20 +1228,20 @@ function EntryScreen({ onEnter }) {
                                 className: `entry__found-dot ${foundCount >= 1 ? "lit" : ""}`
                             }, void 0, false, {
                                 fileName: "[project]/app/components/EntryScreen.tsx",
-                                lineNumber: 869,
+                                lineNumber: 929,
                                 columnNumber: 13
                             }, this),
                             /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])("span", {
                                 className: `entry__found-dot ${foundCount >= 2 ? "lit" : ""}`
                             }, void 0, false, {
                                 fileName: "[project]/app/components/EntryScreen.tsx",
-                                lineNumber: 872,
+                                lineNumber: 932,
                                 columnNumber: 13
                             }, this)
                         ]
                     }, void 0, true, {
                         fileName: "[project]/app/components/EntryScreen.tsx",
-                        lineNumber: 868,
+                        lineNumber: 928,
                         columnNumber: 11
                     }, this),
                     /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])("div", {
@@ -1195,7 +1249,7 @@ function EntryScreen({ onEnter }) {
                         children: "47.3769° N, 8.5417° E"
                     }, void 0, false, {
                         fileName: "[project]/app/components/EntryScreen.tsx",
-                        lineNumber: 878,
+                        lineNumber: 938,
                         columnNumber: 9
                     }, this),
                     /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])("div", {
@@ -1203,75 +1257,75 @@ function EntryScreen({ onEnter }) {
                         children: "v0.0.1"
                     }, void 0, false, {
                         fileName: "[project]/app/components/EntryScreen.tsx",
-                        lineNumber: 879,
+                        lineNumber: 939,
                         columnNumber: 9
                     }, this)
                 ]
             }, void 0, true, {
                 fileName: "[project]/app/components/EntryScreen.tsx",
-                lineNumber: 857,
+                lineNumber: 917,
                 columnNumber: 7
             }, this),
             /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])("div", {
                 className: "entry__led entry__led--top"
             }, void 0, false, {
                 fileName: "[project]/app/components/EntryScreen.tsx",
-                lineNumber: 883,
+                lineNumber: 943,
                 columnNumber: 7
             }, this),
             /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])("div", {
                 className: "entry__led entry__led--bottom"
             }, void 0, false, {
                 fileName: "[project]/app/components/EntryScreen.tsx",
-                lineNumber: 884,
+                lineNumber: 944,
                 columnNumber: 7
             }, this),
             /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])("div", {
                 className: "entry__led entry__led--left"
             }, void 0, false, {
                 fileName: "[project]/app/components/EntryScreen.tsx",
-                lineNumber: 885,
+                lineNumber: 945,
                 columnNumber: 7
             }, this),
             /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])("div", {
                 className: "entry__led entry__led--right"
             }, void 0, false, {
                 fileName: "[project]/app/components/EntryScreen.tsx",
-                lineNumber: 886,
+                lineNumber: 946,
                 columnNumber: 7
             }, this),
             /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])("div", {
                 className: "entry__glyph-corner entry__glyph-corner--tl"
             }, void 0, false, {
                 fileName: "[project]/app/components/EntryScreen.tsx",
-                lineNumber: 889,
+                lineNumber: 949,
                 columnNumber: 7
             }, this),
             /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])("div", {
                 className: "entry__glyph-corner entry__glyph-corner--tr"
             }, void 0, false, {
                 fileName: "[project]/app/components/EntryScreen.tsx",
-                lineNumber: 890,
+                lineNumber: 950,
                 columnNumber: 7
             }, this),
             /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])("div", {
                 className: "entry__glyph-corner entry__glyph-corner--bl"
             }, void 0, false, {
                 fileName: "[project]/app/components/EntryScreen.tsx",
-                lineNumber: 891,
+                lineNumber: 951,
                 columnNumber: 7
             }, this),
             /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])("div", {
                 className: "entry__glyph-corner entry__glyph-corner--br"
             }, void 0, false, {
                 fileName: "[project]/app/components/EntryScreen.tsx",
-                lineNumber: 892,
+                lineNumber: 952,
                 columnNumber: 7
             }, this)
         ]
     }, void 0, true, {
         fileName: "[project]/app/components/EntryScreen.tsx",
-        lineNumber: 843,
+        lineNumber: 903,
         columnNumber: 5
     }, this);
 }
@@ -5344,12 +5398,13 @@ function ParticleCanvas() {
                 const el = document.createElement("div");
                 el.style.cssText = `
           position:absolute;
-          left:${px - entryBlockSize / 2}px;
-          top:${py - entryBlockSize / 2}px;
-          width:${entryBlockSize}px;
-          height:${entryBlockSize}px;
+          left:${px - entryBlockSize * 0.65}px;
+          top:${py - entryBlockSize * 0.65}px;
+          width:${entryBlockSize * 1.3}px;
+          height:${entryBlockSize * 1.3}px;
           border-radius:50%;
           background:#fff;
+          box-shadow:0 0 6px 2px rgba(255,255,255,0.3);
           opacity:0;
           will-change:transform,opacity;
           transform-style:preserve-3d;
@@ -5403,6 +5458,13 @@ function ParticleCanvas() {
         let time = 0;
         let currentLabel = SECTIONS[0].label;
         /* ── Flashlight glow state — cursor-proximity reveal ── */ const glows = new Float32Array(N); /* 0 = invisible, 1 = fully lit */ 
+        const pulseStart = new Float32Array(N);
+        const PULSE_DUR = 600;
+        let pcPrevMx = -9999;
+        let pcPrevMy = -9999;
+        let pcWaveActive = false;
+        let pcStoppedFrames = 0;
+        const PC_WAVE_SPEED = 0.4;
         const FLASH_RADIUS = 180;
         const FLASH_R2 = FLASH_RADIUS * FLASH_RADIUS;
         const FLASH_INV_R = 1 / FLASH_RADIUS;
@@ -5483,8 +5545,9 @@ function ParticleCanvas() {
                             const dist = Math.sqrt(d2);
                             const falloff = 1 - dist * FLASH_INV_R;
                             let target = falloff * falloff; /* quadratic falloff */ 
-                            /* Text dots get brighter near cursor (like entry screen K proximity) */ if (isHeroCenterDot[idx] && dist < 140) {
-                                target = Math.min(1, target * 1.4);
+                            /* Text dots: use linear falloff for much brighter pop,
+                 same approach as year dots in experience section */ if (isHeroCenterDot[idx] && dist < 200) {
+                                target = Math.max(target, falloff * 0.95);
                             }
                             if (target > glows[idx]) {
                                 glows[idx] = glows[idx] + (target - glows[idx]) * 0.55;
@@ -5496,6 +5559,44 @@ function ParticleCanvas() {
                 /* Reset when leaving hero */ for(let i = 0; i < N; i++){
                     glows[i] = 0;
                 }
+            }
+            /* ── Directional wave pulse (hero only) ── */ if (isOnHero) {
+                const wmx = soundMouse.x;
+                const wmy = soundMouse.y;
+                const velX = wmx - pcPrevMx;
+                const velY = wmy - pcPrevMy;
+                const speed = Math.sqrt(velX * velX + velY * velY);
+                if (speed > 3) {
+                    pcStoppedFrames = 0;
+                    pcWaveActive = true;
+                    const dirX = velX / speed;
+                    const dirY = velY / speed;
+                    const now = performance.now();
+                    for(let i = 0; i < N; i++){
+                        const gx = i % cols;
+                        const gy = Math.floor(i / cols);
+                        const px = oX + gx * step + halfBlock;
+                        const py = oY + gy * step + halfBlock;
+                        const toX = px - wmx;
+                        const toY = py - wmy;
+                        const proj = toX * dirX + toY * dirY;
+                        if (proj > 0 && proj < 1200) {
+                            const perp = Math.abs(toX * -dirY + toY * dirX);
+                            if (perp < FLASH_RADIUS * 1.5) {
+                                if (pulseStart[i] > 0) {
+                                    const el = now - pulseStart[i];
+                                    if (el >= 0 && el < PULSE_DUR) continue;
+                                }
+                                pulseStart[i] = now + proj / PC_WAVE_SPEED;
+                            }
+                        }
+                    }
+                } else {
+                    pcStoppedFrames++;
+                    if (pcStoppedFrames > 10) pcWaveActive = false;
+                }
+                pcPrevMx = wmx;
+                pcPrevMy = wmy;
             }
             /* Fade hero overlay based on scroll — gone by 30% scroll */ const heroOpacity = Math.max(0, 1 - progress * 3);
             if (heroOverlayRef.current) {
@@ -5611,7 +5712,17 @@ function ParticleCanvas() {
                     else if (sectionB === 0) heroBlend = eased;
                     if (heroBlend > 0.01) {
                         /* On hero: text dots are DOM (for anime.js 3D pop); pond dots stay on canvas */ if (isHeroGridDot[i]) {
-                            const drawSize = spriteSize + (heroSpriteSize - spriteSize) * heroBlend;
+                            /* Stagger pulse scale */ let pScale = 1;
+                            if (pulseStart[i] > 0) {
+                                const pNow = performance.now();
+                                const pEl = pNow - pulseStart[i];
+                                if (pEl >= 0 && pEl < PULSE_DUR) {
+                                    pScale = 1 + 0.3 * Math.sin(pEl / PULSE_DUR * Math.PI);
+                                } else if (pEl >= PULSE_DUR) {
+                                    pulseStart[i] = 0;
+                                }
+                            }
+                            const drawSize = (spriteSize + (heroSpriteSize - spriteSize) * heroBlend) * pScale;
                             const halfDraw = drawSize / 2;
                             ctx.drawImage(heroDotSprite, p.x - halfDraw, p.y - halfDraw, drawSize, drawSize);
                         }
@@ -5646,6 +5757,17 @@ function ParticleCanvas() {
                                 ease: "outElastic(1, .5)"
                             });
                         }
+                        /* Wave pulse scale for text dots (after pop is done) */ if (heroDotRevealed[d] && pulseStart[idx] > 0) {
+                            const pNow = performance.now();
+                            const pEl = pNow - pulseStart[idx];
+                            if (pEl >= 0 && pEl < PULSE_DUR) {
+                                const s = 1 + 0.3 * Math.sin(pEl / PULSE_DUR * Math.PI);
+                                heroDotEls[d].style.transform = `scale(${s})`;
+                            } else if (pEl >= PULSE_DUR) {
+                                pulseStart[idx] = 0;
+                                heroDotEls[d].style.transform = "";
+                            }
+                        }
                     }
                 }
             }
@@ -5671,7 +5793,7 @@ function ParticleCanvas() {
                 className: "pc-canvas"
             }, void 0, false, {
                 fileName: "[project]/app/components/ParticleCanvas.tsx",
-                lineNumber: 565,
+                lineNumber: 640,
                 columnNumber: 7
             }, this),
             /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])("div", {
@@ -5680,13 +5802,13 @@ function ParticleCanvas() {
                     position: "fixed",
                     inset: 0,
                     pointerEvents: "none",
-                    zIndex: 2,
+                    zIndex: 12,
                     perspective: 800,
                     transformStyle: "preserve-3d"
                 }
             }, void 0, false, {
                 fileName: "[project]/app/components/ParticleCanvas.tsx",
-                lineNumber: 568,
+                lineNumber: 643,
                 columnNumber: 7
             }, this),
             /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])("nav", {
@@ -5705,14 +5827,14 @@ function ParticleCanvas() {
                                 children: "◆"
                             }, void 0, false, {
                                 fileName: "[project]/app/components/ParticleCanvas.tsx",
-                                lineNumber: 583,
+                                lineNumber: 658,
                                 columnNumber: 13
                             }, this),
                             "DEV"
                         ]
                     }, void 0, true, {
                         fileName: "[project]/app/components/ParticleCanvas.tsx",
-                        lineNumber: 582,
+                        lineNumber: 657,
                         columnNumber: 9
                     }, this),
                     /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])("div", {
@@ -5728,7 +5850,7 @@ function ParticleCanvas() {
                                         children: "GITHUB"
                                     }, void 0, false, {
                                         fileName: "[project]/app/components/ParticleCanvas.tsx",
-                                        lineNumber: 587,
+                                        lineNumber: 662,
                                         columnNumber: 13
                                     }, this),
                                     /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])("a", {
@@ -5738,7 +5860,7 @@ function ParticleCanvas() {
                                         children: "LINKEDIN"
                                     }, void 0, false, {
                                         fileName: "[project]/app/components/ParticleCanvas.tsx",
-                                        lineNumber: 594,
+                                        lineNumber: 669,
                                         columnNumber: 13
                                     }, this),
                                     /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])("a", {
@@ -5748,13 +5870,13 @@ function ParticleCanvas() {
                                         children: "RESUME"
                                     }, void 0, false, {
                                         fileName: "[project]/app/components/ParticleCanvas.tsx",
-                                        lineNumber: 601,
+                                        lineNumber: 676,
                                         columnNumber: 13
                                     }, this)
                                 ]
                             }, void 0, true, {
                                 fileName: "[project]/app/components/ParticleCanvas.tsx",
-                                lineNumber: 586,
+                                lineNumber: 661,
                                 columnNumber: 11
                             }, this),
                             /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])("a", {
@@ -5766,26 +5888,26 @@ function ParticleCanvas() {
                                         children: "●"
                                     }, void 0, false, {
                                         fileName: "[project]/app/components/ParticleCanvas.tsx",
-                                        lineNumber: 609,
+                                        lineNumber: 684,
                                         columnNumber: 13
                                     }, this),
                                     " KKALYANKUMAR.DEV"
                                 ]
                             }, void 0, true, {
                                 fileName: "[project]/app/components/ParticleCanvas.tsx",
-                                lineNumber: 605,
+                                lineNumber: 680,
                                 columnNumber: 11
                             }, this)
                         ]
                     }, void 0, true, {
                         fileName: "[project]/app/components/ParticleCanvas.tsx",
-                        lineNumber: 585,
+                        lineNumber: 660,
                         columnNumber: 9
                     }, this)
                 ]
             }, void 0, true, {
                 fileName: "[project]/app/components/ParticleCanvas.tsx",
-                lineNumber: 581,
+                lineNumber: 656,
                 columnNumber: 7
             }, this),
             /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])("div", {
@@ -5799,12 +5921,12 @@ function ParticleCanvas() {
                     children: "I'M KALYAN, A FULL-STACK SOFTWARE ENGINEER BASED IN NEW JERSEY, DEDICATED TO BUILDING SCALABLE WEB APPLICATIONS & AI-POWERED TOOLS FOR PRODUCTION ENVIRONMENTS. LET'S CONNECT!"
                 }, void 0, false, {
                     fileName: "[project]/app/components/ParticleCanvas.tsx",
-                    lineNumber: 616,
+                    lineNumber: 691,
                     columnNumber: 9
                 }, this)
             }, void 0, false, {
                 fileName: "[project]/app/components/ParticleCanvas.tsx",
-                lineNumber: 615,
+                lineNumber: 690,
                 columnNumber: 7
             }, this),
             /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])("div", {
@@ -5819,7 +5941,7 @@ function ParticleCanvas() {
                         children: "SCROLL TO SEE MORE"
                     }, void 0, false, {
                         fileName: "[project]/app/components/ParticleCanvas.tsx",
-                        lineNumber: 628,
+                        lineNumber: 703,
                         columnNumber: 9
                     }, this),
                     /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])("span", {
@@ -5827,13 +5949,13 @@ function ParticleCanvas() {
                         children: "AVAILABLE FOR OPPORTUNITIES"
                     }, void 0, false, {
                         fileName: "[project]/app/components/ParticleCanvas.tsx",
-                        lineNumber: 629,
+                        lineNumber: 704,
                         columnNumber: 9
                     }, this)
                 ]
             }, void 0, true, {
                 fileName: "[project]/app/components/ParticleCanvas.tsx",
-                lineNumber: 627,
+                lineNumber: 702,
                 columnNumber: 7
             }, this),
             /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])("div", {
@@ -5843,12 +5965,12 @@ function ParticleCanvas() {
                         "data-section": i
                     }, i, false, {
                         fileName: "[project]/app/components/ParticleCanvas.tsx",
-                        lineNumber: 635,
+                        lineNumber: 710,
                         columnNumber: 11
                     }, this))
             }, void 0, false, {
                 fileName: "[project]/app/components/ParticleCanvas.tsx",
-                lineNumber: 633,
+                lineNumber: 708,
                 columnNumber: 7
             }, this),
             /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])("div", {
@@ -5863,7 +5985,7 @@ function ParticleCanvas() {
                         children: SECTIONS[0].label
                     }, void 0, false, {
                         fileName: "[project]/app/components/ParticleCanvas.tsx",
-                        lineNumber: 641,
+                        lineNumber: 716,
                         columnNumber: 9
                     }, this),
                     /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])("div", {
@@ -5872,18 +5994,18 @@ function ParticleCanvas() {
                                 className: `pc-dot${i === 0 ? " active" : ""}`
                             }, i, false, {
                                 fileName: "[project]/app/components/ParticleCanvas.tsx",
-                                lineNumber: 644,
+                                lineNumber: 719,
                                 columnNumber: 13
                             }, this))
                     }, void 0, false, {
                         fileName: "[project]/app/components/ParticleCanvas.tsx",
-                        lineNumber: 642,
+                        lineNumber: 717,
                         columnNumber: 9
                     }, this)
                 ]
             }, void 0, true, {
                 fileName: "[project]/app/components/ParticleCanvas.tsx",
-                lineNumber: 640,
+                lineNumber: 715,
                 columnNumber: 7
             }, this)
         ]
@@ -5900,6 +6022,9 @@ __turbopack_context__.s([
 var __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__ = __turbopack_context__.i("[project]/node_modules/next/dist/server/route-modules/app-page/vendored/ssr/react-jsx-dev-runtime.js [app-ssr] (ecmascript)");
 var __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__ = __turbopack_context__.i("[project]/node_modules/next/dist/server/route-modules/app-page/vendored/ssr/react.js [app-ssr] (ecmascript)");
 var __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$animejs$2f$lib$2f$anime$2e$es$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__ = __turbopack_context__.i("[project]/node_modules/animejs/lib/anime.es.js [app-ssr] (ecmascript)");
+var __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$gsap$2f$index$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__$3c$locals$3e$__ = __turbopack_context__.i("[project]/node_modules/gsap/index.js [app-ssr] (ecmascript) <locals>");
+var __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$flubber$2f$index$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__$3c$locals$3e$__ = __turbopack_context__.i("[project]/node_modules/flubber/index.js [app-ssr] (ecmascript) <locals>");
+var __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$flubber$2f$src$2f$interpolate$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__$3c$export__default__as__interpolate$3e$__ = __turbopack_context__.i("[project]/node_modules/flubber/src/interpolate.js [app-ssr] (ecmascript) <export default as interpolate>");
 var __TURBOPACK__imported__module__$5b$project$5d2f$app$2f$components$2f$pixel$2d$font$2e$ts__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__ = __turbopack_context__.i("[project]/app/components/pixel-font.ts [app-ssr] (ecmascript)");
 var __TURBOPACK__imported__module__$5b$project$5d2f$app$2f$components$2f$clock$2d$tick$2e$ts__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__ = __turbopack_context__.i("[project]/app/components/clock-tick.ts [app-ssr] (ecmascript)");
 "use client";
@@ -5909,6 +6034,28 @@ var __TURBOPACK__imported__module__$5b$project$5d2f$app$2f$components$2f$clock$2
 ;
 ;
 ;
+;
+;
+/* ═══════════════════════════════════════
+   SVG Morphing Paths (100x100 viewBox)
+   ═══════════════════════════════════════ */ const charPaths = {
+    "C": "M 80 20 L 60 20 L 60 40 L 40 40 L 40 60 L 60 60 L 60 80 L 80 80 L 80 100 L 20 100 L 20 0 L 80 0 Z",
+    "A": "M 40 0 L 60 0 L 100 100 L 80 100 L 70 70 L 30 70 L 20 100 L 0 100 Z M 50 20 L 35 55 L 65 55 Z",
+    "R": "M 20 0 L 70 0 C 85 0 95 10 95 30 C 95 50 85 60 70 60 L 50 60 L 85 100 L 60 100 L 40 60 L 40 100 L 20 100 Z M 40 20 L 40 40 L 65 40 C 70 40 75 35 75 30 C 75 25 70 20 65 20 Z",
+    "E": "M 20 0 L 80 0 L 80 20 L 40 20 L 40 40 L 70 40 L 70 60 L 40 60 L 40 80 L 80 80 L 80 100 L 20 100 Z",
+    "&": "M 80 90 L 95 100 L 70 75 C 80 65 85 50 80 35 C 75 15 50 5 35 20 C 20 35 20 65 35 80 C 50 95 70 95 80 90 Z M 45 35 C 55 25 60 35 55 45 C 50 55 40 50 45 35 Z M 45 70 C 35 60 35 50 45 45 C 55 40 65 60 55 70 C 45 80 40 70 45 70 Z",
+    "P": "M 20 0 L 70 0 C 90 0 100 15 100 35 C 100 55 90 70 70 70 L 40 70 L 40 100 L 20 100 Z M 40 20 L 40 50 L 65 50 C 75 50 80 45 80 35 C 80 25 75 20 65 20 Z",
+    "I": "M 40 0 L 60 0 L 60 100 L 40 100 Z",
+    "N": "M 20 0 L 40 0 L 70 60 L 70 0 L 90 0 L 90 100 L 70 100 L 40 40 L 40 100 L 20 100 Z",
+    "X": "M 10 0 L 35 0 L 50 40 L 65 0 L 90 0 L 65 50 L 90 100 L 65 100 L 50 60 L 35 100 L 10 100 L 35 50 Z"
+};
+const shapePaths = [
+    "M 50 0 C 77 0 100 23 100 50 C 100 77 77 100 50 100 C 23 100 0 77 0 50 C 0 23 23 0 50 0 Z",
+    /* Circle */ "M 10 10 L 90 10 L 90 90 L 10 90 Z",
+    /* Square */ "M 50 10 L 90 90 L 10 90 Z",
+    /* Triangle */ "M 50 0 L 100 50 L 50 100 L 0 50 Z",
+    /* Diamond */ "M 50 0 L 65 35 L 100 35 L 70 60 L 80 100 L 50 75 L 20 100 L 30 60 L 0 35 L 35 35 Z"
+];
 const CAREER = [
     {
         year: "2025",
@@ -6209,6 +6356,13 @@ function ExperienceSection() {
             });
         }
         /* Glow state */ const glows = new Float32Array(N);
+        const pulseStart = new Float32Array(N); /* timestamp when pulse begins */ 
+        const PULSE_DUR = 600; /* ms for one pulse up+down */ 
+        /* Directional wave state */ let prevMx = -9999;
+        let prevMy = -9999;
+        let cursorStoppedFrames = 0;
+        let waveActive = false;
+        const WAVE_SPEED = 0.4; /* px per ms — how fast the wave front travels */ 
         const RADIUS = 180;
         const R2 = RADIUS * RADIUS;
         const INV_R = 1 / RADIUS;
@@ -6256,6 +6410,48 @@ function ExperienceSection() {
                         }
                     }
                 }
+            }
+            /* Directional wave: when cursor moves, launch a wave in movement direction.
+         Dots ahead of cursor (in movement direction) pulse with delay proportional
+         to their distance along that direction. Wave travels to screen edge. */ {
+                const velX = mx - prevMx;
+                const velY = my - prevMy;
+                const speed = Math.sqrt(velX * velX + velY * velY);
+                if (speed > 3) {
+                    /* Cursor is moving — launch a new wave */ cursorStoppedFrames = 0;
+                    if (!waveActive) waveActive = true;
+                    /* Normalize direction */ const dirX = velX / speed;
+                    const dirY = velY / speed;
+                    const now = performance.now();
+                    /* Project every dot onto the movement direction from cursor position.
+             Only dots in the forward half (positive projection) get pulsed.
+             Delay = projected distance / wave speed */ for(let i = 0; i < N; i++){
+                        const gx = i % cols;
+                        const gy = Math.floor(i / cols);
+                        const px = oX + gx * step + half;
+                        const py = oY + gy * step + half;
+                        const toX = px - mx;
+                        const toY = py - my;
+                        /* Project onto direction vector */ const proj = toX * dirX + toY * dirY;
+                        /* Only forward dots (positive projection), skip dots behind cursor */ if (proj > 0 && proj < 1200) {
+                            /* Perpendicular distance — only pulse dots within a band */ const perp = Math.abs(toX * -dirY + toY * dirX);
+                            if (perp < RADIUS * 1.5) {
+                                /* Skip dots already mid-pulse */ if (pulseStart[i] > 0) {
+                                    const el = now - pulseStart[i];
+                                    if (el >= 0 && el < PULSE_DUR) continue;
+                                }
+                                /* Delay based on distance along wave direction */ pulseStart[i] = now + proj / WAVE_SPEED;
+                            }
+                        }
+                    }
+                } else {
+                    cursorStoppedFrames++;
+                    if (cursorStoppedFrames > 10) {
+                        waveActive = false;
+                    }
+                }
+                prevMx = mx;
+                prevMy = my;
             }
             /* Apply target map to actual glows — snap-fast lerp matching entry screen */ for(let i = 0; i < N; i++){
                 if (targetMap[i] > glows[i]) {
@@ -6312,6 +6508,7 @@ function ExperienceSection() {
             const origX = disperseOriginRef.current.x;
             const origY = disperseOriginRef.current.y;
             /* Clear & draw */ ctx.clearRect(0, 0, W, H);
+            const drawNow = performance.now();
             for(let i = 0; i < N; i++){
                 if (glows[i] > 0.005) {
                     const gx = i % cols;
@@ -6322,19 +6519,31 @@ function ExperienceSection() {
                         px = origX + (px - origX) * disperseEase;
                         py = origY + (py - origY) * disperseEase;
                     }
+                    /* Stagger pulse scale: 1.0 → 1.3 → 1.0 over PULSE_DUR ms */ let scale = 1;
+                    if (pulseStart[i] > 0) {
+                        const elapsed = drawNow - pulseStart[i];
+                        if (elapsed >= 0 && elapsed < PULSE_DUR) {
+                            const t = elapsed / PULSE_DUR;
+                            /* Sin curve: 0→1→0 */ scale = 1 + 0.3 * Math.sin(t * Math.PI);
+                        } else if (elapsed >= PULSE_DUR) {
+                            pulseStart[i] = 0; /* pulse done */ 
+                        }
+                    }
+                    const drawSize = spriteSize * scale;
+                    const halfDraw = drawSize / 2;
                     ctx.globalAlpha = glows[i];
                     if (isYearDot[i] && glows[i] > 0.35) {
                         const tint = Math.min(1, (glows[i] - 0.35) * 3);
-                        ctx.drawImage(sprite, px - halfSprite, py - halfSprite, spriteSize, spriteSize);
+                        ctx.drawImage(sprite, px - halfDraw, py - halfDraw, drawSize, drawSize);
                         if (tint > 0.1) {
                             ctx.globalAlpha = tint * 0.6;
                             ctx.fillStyle = "#ffffff";
                             ctx.beginPath();
-                            ctx.arc(px, py, half, 0, Math.PI * 2);
+                            ctx.arc(px, py, half * scale, 0, Math.PI * 2);
                             ctx.fill();
                         }
                     } else {
-                        ctx.drawImage(sprite, px - halfSprite, py - halfSprite, spriteSize, spriteSize);
+                        ctx.drawImage(sprite, px - halfDraw, py - halfDraw, drawSize, drawSize);
                     }
                 }
             }
@@ -6386,53 +6595,285 @@ function ExperienceSection() {
     }, [
         isActive
     ]);
-    /* ── Animate marquee chars ── */ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["useEffect"])(()=>{
+    /* ── Interactive Draggable Characters (Safe Custom Implementation) ── */ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["useEffect"])(()=>{
         if (!isActive || !marqueeRef.current) return;
         const chars = marqueeRef.current.querySelectorAll(".exp-marquee-char");
         if (chars.length === 0) return;
-        (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$animejs$2f$lib$2f$anime$2e$es$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["default"])({
-            targets: Array.from(chars),
-            translateY: [
-                {
-                    to: -6,
-                    duration: 400
-                },
-                {
-                    to: 0,
-                    duration: 400
-                }
-            ],
-            rotateZ: [
-                {
-                    to: -8,
-                    duration: 300
-                },
-                {
-                    to: 8,
-                    duration: 300
-                },
-                {
-                    to: 0,
-                    duration: 300
-                }
-            ],
-            scale: [
-                {
-                    to: 1.15,
-                    duration: 250
-                },
-                {
-                    to: 1,
-                    duration: 250
-                }
-            ],
-            delay: (_el, i)=>i * 40,
-            loop: true,
-            ease: "inOutSine"
+        /* Custom drag implementation because GSAP Draggable destroys the inline layout math */ let activeChar = null;
+        let startX = 0;
+        let startY = 0;
+        let currentX = 0;
+        let currentY = 0;
+        const onPointerDown = (e)=>{
+            e.preventDefault(); // Prevent native drag/select
+            const target = e.currentTarget;
+            activeChar = target;
+            /* Record absolute mouse start */ startX = e.clientX;
+            startY = e.clientY;
+            /* Use gsap.getProperty to reliably get current GSAP transforms (bypassing matrix/translate3d string CSS parsing issues) */ currentX = __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$gsap$2f$index$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__$3c$locals$3e$__["gsap"].getProperty(target, "x") || 0;
+            currentY = __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$gsap$2f$index$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__$3c$locals$3e$__["gsap"].getProperty(target, "y") || 0;
+            __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$gsap$2f$index$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__$3c$locals$3e$__["gsap"].killTweensOf(target, "x,y,zIndex");
+            __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$gsap$2f$index$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__$3c$locals$3e$__["gsap"].set(target, {
+                zIndex: 100
+            });
+            /* Listen on window to guarantee we don't drop events if the mouse moves very fast, leaves the element, or hits screen edges */ window.addEventListener("pointermove", onPointerMove);
+            window.addEventListener("pointerup", onPointerUp);
+            window.addEventListener("pointercancel", onPointerUp);
+        };
+        const onPointerMove = (e)=>{
+            if (!activeChar) return;
+            const dx = e.clientX - startX;
+            const dy = e.clientY - startY;
+            __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$gsap$2f$index$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__$3c$locals$3e$__["gsap"].set(activeChar, {
+                x: currentX + dx,
+                y: currentY + dy
+            });
+        };
+        const onPointerUp = (e)=>{
+            if (!activeChar) return;
+            __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$gsap$2f$index$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__$3c$locals$3e$__["gsap"].to(activeChar, {
+                x: 0,
+                y: 0,
+                duration: 1.2,
+                ease: "elastic.out(1, 0.4)",
+                zIndex: 0
+            });
+            activeChar = null;
+            window.removeEventListener("pointermove", onPointerMove);
+            window.removeEventListener("pointerup", onPointerUp);
+            window.removeEventListener("pointercancel", onPointerUp);
+        };
+        chars.forEach((char)=>{
+            char.addEventListener("pointerdown", onPointerDown);
         });
+        return ()=>{
+            chars.forEach((char)=>{
+                char.removeEventListener("pointerdown", onPointerDown);
+                /* Reset state on cleanup */ __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$gsap$2f$index$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__$3c$locals$3e$__["gsap"].killTweensOf(char);
+            });
+            window.removeEventListener("pointermove", onPointerMove);
+            window.removeEventListener("pointerup", onPointerUp);
+            window.removeEventListener("pointercancel", onPointerUp);
+        };
     }, [
         isActive
     ]);
+    /* ── Interpolator Cache to prevent main-thread freezing ── */ /* Flubber path interpolation is heavy. Calculate each unique path pairing exactly ONCE. */ const getInterpolator = (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["useMemo"])(()=>{
+        const cache = new Map();
+        return (fromPath, toPath)=>{
+            const key = `${fromPath}|${toPath}`;
+            if (cache.has(key)) return cache.get(key);
+            const interpolator = (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$flubber$2f$src$2f$interpolate$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__$3c$export__default__as__interpolate$3e$__["interpolate"])(fromPath, toPath, {
+                maxSegmentLength: 2
+            });
+            cache.set(key, interpolator);
+            return interpolator;
+        };
+    }, []);
+    /* ── Per-character SVG Path Morphing ── */ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["useEffect"])(()=>{
+        if (!isActive || !marqueeRef.current) return;
+        const charPathsElements = Array.from(marqueeRef.current.querySelectorAll(".exp-svg-char-path"));
+        if (charPathsElements.length === 0) return;
+        const timelines = [];
+        // The text block "CAREER & EXPERIENCE" renders exactly 17 SVGs (spaces are skipped).
+        // CAREER = indices 0-5
+        // & = index 6
+        // EXPERIENCE = indices 7-16
+        const pathsPerBlock = 17;
+        const blocksCount = Math.floor(charPathsElements.length / pathsPerBlock);
+        function getShuffled(array, count) {
+            const cloned = [
+                ...array
+            ];
+            for(let i = cloned.length - 1; i > 0; i--){
+                const j = Math.floor(Math.random() * (i + 1));
+                [cloned[i], cloned[j]] = [
+                    cloned[j],
+                    cloned[i]
+                ];
+            }
+            return cloned.slice(0, count);
+        }
+        const careerPool = [
+            0,
+            1,
+            2,
+            3,
+            4,
+            5
+        ];
+        const expPool = [
+            7,
+            8,
+            9,
+            10,
+            11,
+            12,
+            13,
+            14,
+            15,
+            16
+        ];
+        for(let b = 0; b < blocksCount; b++){
+            const blockStartIndex = b * pathsPerBlock;
+            const careerSelected = getShuffled(careerPool, 2);
+            const expSelected = getShuffled(expPool, 3);
+            const animatedIndices = new Set([
+                ...careerSelected,
+                ...expSelected
+            ]);
+            for(let relIdx = 0; relIdx < pathsPerBlock; relIdx++){
+                // Skip characters not selected for this block iteration
+                if (!animatedIndices.has(relIdx)) continue;
+                const globalIdx = blockStartIndex + relIdx;
+                const pathEl = charPathsElements[globalIdx];
+                if (!pathEl) continue;
+                const originalPath = pathEl.getAttribute("data-original");
+                if (!originalPath) continue;
+                // Use globalIdx 'i' for deterministic deterministic-looking shape logic or randomized logic
+                const i = globalIdx;
+                /* Pick 3 constant shapes from the pool for this character */ const targetPaths = [
+                    shapePaths[i % shapePaths.length],
+                    shapePaths[(i + 2) % shapePaths.length],
+                    shapePaths[(i + 4) % shapePaths.length]
+                ];
+                const tl = __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$gsap$2f$index$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__$3c$locals$3e$__["gsap"].timeline({
+                    repeat: -1,
+                    delay: i % 19 * 0.4
+                });
+                targetPaths.forEach((targetPath, shapeIdx)=>{
+                    /* Grab cached interpolators */ const toShape = getInterpolator(originalPath, targetPath);
+                    const fromShape = getInterpolator(targetPath, originalPath);
+                    /* Object for GSAP to tween */ const proxy = {
+                        progress: 0
+                    };
+                    /* Morph Letter -> Shape */ tl.to(proxy, {
+                        progress: 1,
+                        duration: 0.8,
+                        ease: "expo.inOut",
+                        onUpdate: ()=>pathEl.setAttribute("d", toShape(proxy.progress))
+                    });
+                    /* Recolor slightly and subtly scale the SVG container during shape */ const svgEl = pathEl.closest("svg");
+                    if (svgEl) {
+                        tl.to(svgEl, {
+                            scale: 1.15,
+                            rotation: (Math.random() - 0.5) * 20,
+                            duration: 0.8,
+                            ease: "expo.inOut"
+                        }, "<");
+                        tl.to(pathEl, {
+                            fill: `hsla(${i * 37 % 360}, 60%, 80%, 1)`,
+                            duration: 0.8
+                        }, "<");
+                    }
+                    /* Hold shape */ tl.to({}, {
+                        duration: 1.0
+                    });
+                    /* Reset proxy for return trip */ tl.set(proxy, {
+                        progress: 0
+                    });
+                    /* Morph Shape -> Letter */ tl.to(proxy, {
+                        progress: 1,
+                        duration: 0.8,
+                        ease: "expo.inOut",
+                        onUpdate: ()=>pathEl.setAttribute("d", fromShape(proxy.progress))
+                    });
+                    /* Reset container scale/rotation and color */ if (svgEl) {
+                        tl.to(svgEl, {
+                            scale: 1,
+                            rotation: 0,
+                            duration: 0.8,
+                            ease: "expo.inOut"
+                        }, "<");
+                        tl.to(pathEl, {
+                            fill: "#ffffff",
+                            duration: 0.8
+                        }, "<");
+                    }
+                    /* Hold letter */ tl.to({}, {
+                        duration: 0.6
+                    });
+                });
+                timelines.push(tl);
+            }
+        }
+        return ()=>{
+            timelines.forEach((tl)=>tl.kill());
+            /* Ensure paths are reset */ charPathsElements.forEach((pathEl)=>{
+                pathEl.setAttribute("d", pathEl.getAttribute("data-original") || "");
+                __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$gsap$2f$index$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__$3c$locals$3e$__["gsap"].set(pathEl, {
+                    clearProps: "all"
+                });
+                const svgEl = pathEl.closest("svg");
+                if (svgEl) __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$gsap$2f$index$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__$3c$locals$3e$__["gsap"].set(svgEl, {
+                    clearProps: "all"
+                });
+            });
+        };
+    }, [
+        isActive
+    ]);
+    /* ── Marquee text builder (renders SVGs for morphing) ── */ const marqueeText = "CAREER & EXPERIENCE";
+    const buildMarqueeChars = (key)=>/*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])("span", {
+            className: "exp-marquee-text",
+            children: marqueeText.split("").map((ch, i)=>{
+                const isSpace = ch === " ";
+                const pathData = charPaths[ch] || "";
+                return /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])("span", {
+                    className: "exp-marquee-char",
+                    style: {
+                        display: "inline-flex",
+                        justifyContent: "center",
+                        alignItems: "center",
+                        width: isSpace ? "0.4em" : "1em",
+                        height: "1em",
+                        minWidth: isSpace ? "0.4em" : "1em",
+                        maxWidth: isSpace ? "0.4em" : "1em",
+                        flexBasis: isSpace ? "0.4em" : "1em",
+                        flexShrink: 0,
+                        flexGrow: 0,
+                        margin: isSpace ? "0" : "0 0.05em",
+                        verticalAlign: "middle",
+                        position: "relative",
+                        pointerEvents: isSpace ? "none" : "auto",
+                        cursor: isSpace ? "default" : "grab"
+                    },
+                    children: !isSpace && pathData ? /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])("svg", {
+                        viewBox: "0 0 100 100",
+                        style: {
+                            width: "100%",
+                            height: "100%",
+                            minWidth: "100%",
+                            display: "block",
+                            overflow: "visible",
+                            flexShrink: 0
+                        },
+                        children: /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])("path", {
+                            className: "exp-svg-char-path",
+                            d: pathData,
+                            "data-original": pathData,
+                            fill: "#ffffff"
+                        }, void 0, false, {
+                            fileName: "[project]/app/components/sections/ExperienceSection.tsx",
+                            lineNumber: 950,
+                            columnNumber: 17
+                        }, this)
+                    }, void 0, false, {
+                        fileName: "[project]/app/components/sections/ExperienceSection.tsx",
+                        lineNumber: 939,
+                        columnNumber: 15
+                    }, this) : null
+                }, `${key}-${i}`, false, {
+                    fileName: "[project]/app/components/sections/ExperienceSection.tsx",
+                    lineNumber: 917,
+                    columnNumber: 11
+                }, this);
+            })
+        }, key, false, {
+            fileName: "[project]/app/components/sections/ExperienceSection.tsx",
+            lineNumber: 911,
+            columnNumber: 5
+        }, this);
     /* ── Year click handler ── */ const handleYearClick = (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["useCallback"])((year)=>{
         (0, __TURBOPACK__imported__module__$5b$project$5d2f$app$2f$components$2f$clock$2d$tick$2e$ts__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["initAudio"])();
         setActiveYear((prev)=>prev === year ? null : year);
@@ -6450,25 +6891,6 @@ function ExperienceSection() {
             });
         }
     }, []);
-    /* ── Marquee text builder ── */ const marqueeText = "CAREER & EXPERIENCE";
-    const buildMarqueeChars = (key)=>/*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])("span", {
-            className: "exp-marquee-text",
-            children: marqueeText.split("").map((ch, i)=>/*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])("span", {
-                    className: "exp-marquee-char",
-                    style: {
-                        display: "inline-block"
-                    },
-                    children: ch === " " ? "\u00A0" : ch
-                }, `${key}-${i}`, false, {
-                    fileName: "[project]/app/components/sections/ExperienceSection.tsx",
-                    lineNumber: 600,
-                    columnNumber: 9
-                }, this))
-        }, key, false, {
-            fileName: "[project]/app/components/sections/ExperienceSection.tsx",
-            lineNumber: 598,
-            columnNumber: 5
-        }, this);
     /* ── Mini marquee for cards ── */ const buildMiniMarquee = (text)=>/*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])("div", {
             className: "exp-mini-marquee",
             children: /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])("div", {
@@ -6480,17 +6902,17 @@ function ExperienceSection() {
                         children: text
                     }, i, false, {
                         fileName: "[project]/app/components/sections/ExperienceSection.tsx",
-                        lineNumber: 616,
+                        lineNumber: 984,
                         columnNumber: 11
                     }, this))
             }, void 0, false, {
                 fileName: "[project]/app/components/sections/ExperienceSection.tsx",
-                lineNumber: 614,
+                lineNumber: 982,
                 columnNumber: 7
             }, this)
         }, void 0, false, {
             fileName: "[project]/app/components/sections/ExperienceSection.tsx",
-            lineNumber: 613,
+            lineNumber: 981,
             columnNumber: 5
         }, this);
     return /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])("section", {
@@ -6503,7 +6925,7 @@ function ExperienceSection() {
                 className: "exp-dot-canvas"
             }, void 0, false, {
                 fileName: "[project]/app/components/sections/ExperienceSection.tsx",
-                lineNumber: 625,
+                lineNumber: 993,
                 columnNumber: 7
             }, this),
             /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])("div", {
@@ -6511,7 +6933,7 @@ function ExperienceSection() {
                 className: "exp-cursor-glow"
             }, void 0, false, {
                 fileName: "[project]/app/components/sections/ExperienceSection.tsx",
-                lineNumber: 628,
+                lineNumber: 996,
                 columnNumber: 7
             }, this),
             /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])("div", {
@@ -6522,30 +6944,20 @@ function ExperienceSection() {
                     children: Array.from({
                         length: 8
                     }, (_, i)=>/*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])("span", {
-                            children: [
-                                buildMarqueeChars(`m${i}`),
-                                /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])("span", {
-                                    className: "exp-marquee-sep",
-                                    children: "◆"
-                                }, void 0, false, {
-                                    fileName: "[project]/app/components/sections/ExperienceSection.tsx",
-                                    lineNumber: 636,
-                                    columnNumber: 15
-                                }, this)
-                            ]
-                        }, i, true, {
+                            children: buildMarqueeChars(`m${i}`)
+                        }, i, false, {
                             fileName: "[project]/app/components/sections/ExperienceSection.tsx",
-                            lineNumber: 634,
+                            lineNumber: 1002,
                             columnNumber: 13
                         }, this))
                 }, void 0, false, {
                     fileName: "[project]/app/components/sections/ExperienceSection.tsx",
-                    lineNumber: 632,
+                    lineNumber: 1000,
                     columnNumber: 9
                 }, this)
             }, void 0, false, {
                 fileName: "[project]/app/components/sections/ExperienceSection.tsx",
-                lineNumber: 631,
+                lineNumber: 999,
                 columnNumber: 7
             }, this),
             /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])("svg", {
@@ -6565,7 +6977,7 @@ function ExperienceSection() {
                                     stopOpacity: "0.8"
                                 }, void 0, false, {
                                     fileName: "[project]/app/components/sections/ExperienceSection.tsx",
-                                    lineNumber: 646,
+                                    lineNumber: 1013,
                                     columnNumber: 13
                                 }, this),
                                 /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])("stop", {
@@ -6574,7 +6986,7 @@ function ExperienceSection() {
                                     stopOpacity: "1"
                                 }, void 0, false, {
                                     fileName: "[project]/app/components/sections/ExperienceSection.tsx",
-                                    lineNumber: 647,
+                                    lineNumber: 1014,
                                     columnNumber: 13
                                 }, this),
                                 /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])("stop", {
@@ -6583,18 +6995,18 @@ function ExperienceSection() {
                                     stopOpacity: "0.4"
                                 }, void 0, false, {
                                     fileName: "[project]/app/components/sections/ExperienceSection.tsx",
-                                    lineNumber: 648,
+                                    lineNumber: 1015,
                                     columnNumber: 13
                                 }, this)
                             ]
                         }, void 0, true, {
                             fileName: "[project]/app/components/sections/ExperienceSection.tsx",
-                            lineNumber: 645,
+                            lineNumber: 1012,
                             columnNumber: 11
                         }, this)
                     }, void 0, false, {
                         fileName: "[project]/app/components/sections/ExperienceSection.tsx",
-                        lineNumber: 644,
+                        lineNumber: 1011,
                         columnNumber: 9
                     }, this),
                     /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])("path", {
@@ -6602,7 +7014,7 @@ function ExperienceSection() {
                         className: "exp-zigzag-glow"
                     }, void 0, false, {
                         fileName: "[project]/app/components/sections/ExperienceSection.tsx",
-                        lineNumber: 651,
+                        lineNumber: 1018,
                         columnNumber: 9
                     }, this),
                     /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])("path", {
@@ -6610,13 +7022,13 @@ function ExperienceSection() {
                         className: "exp-zigzag-path"
                     }, void 0, false, {
                         fileName: "[project]/app/components/sections/ExperienceSection.tsx",
-                        lineNumber: 652,
+                        lineNumber: 1019,
                         columnNumber: 9
                     }, this)
                 ]
             }, void 0, true, {
                 fileName: "[project]/app/components/sections/ExperienceSection.tsx",
-                lineNumber: 643,
+                lineNumber: 1010,
                 columnNumber: 7
             }, this),
             YEAR_POSITIONS.map(({ year, xPct, yPct })=>{
@@ -6647,12 +7059,12 @@ function ExperienceSection() {
                         children: year
                     }, void 0, false, {
                         fileName: "[project]/app/components/sections/ExperienceSection.tsx",
-                        lineNumber: 672,
+                        lineNumber: 1039,
                         columnNumber: 13
                     }, this)
                 }, year, false, {
                     fileName: "[project]/app/components/sections/ExperienceSection.tsx",
-                    lineNumber: 661,
+                    lineNumber: 1028,
                     columnNumber: 11
                 }, this);
             }),
@@ -6676,7 +7088,7 @@ function ExperienceSection() {
                                 children: "✕"
                             }, void 0, false, {
                                 fileName: "[project]/app/components/sections/ExperienceSection.tsx",
-                                lineNumber: 688,
+                                lineNumber: 1055,
                                 columnNumber: 15
                             }, this),
                             /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])("div", {
@@ -6684,7 +7096,7 @@ function ExperienceSection() {
                                 children: entry.year
                             }, void 0, false, {
                                 fileName: "[project]/app/components/sections/ExperienceSection.tsx",
-                                lineNumber: 696,
+                                lineNumber: 1063,
                                 columnNumber: 15
                             }, this),
                             /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])("div", {
@@ -6695,7 +7107,7 @@ function ExperienceSection() {
                                         children: entry.company
                                     }, void 0, false, {
                                         fileName: "[project]/app/components/sections/ExperienceSection.tsx",
-                                        lineNumber: 699,
+                                        lineNumber: 1066,
                                         columnNumber: 17
                                     }, this),
                                     /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])("p", {
@@ -6703,13 +7115,13 @@ function ExperienceSection() {
                                         children: entry.role
                                     }, void 0, false, {
                                         fileName: "[project]/app/components/sections/ExperienceSection.tsx",
-                                        lineNumber: 700,
+                                        lineNumber: 1067,
                                         columnNumber: 17
                                     }, this)
                                 ]
                             }, void 0, true, {
                                 fileName: "[project]/app/components/sections/ExperienceSection.tsx",
-                                lineNumber: 698,
+                                lineNumber: 1065,
                                 columnNumber: 15
                             }, this),
                             /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])("p", {
@@ -6717,7 +7129,7 @@ function ExperienceSection() {
                                 children: entry.description
                             }, void 0, false, {
                                 fileName: "[project]/app/components/sections/ExperienceSection.tsx",
-                                lineNumber: 703,
+                                lineNumber: 1070,
                                 columnNumber: 15
                             }, this),
                             buildMiniMarquee(entry.roleMarquee),
@@ -6731,7 +7143,7 @@ function ExperienceSection() {
                                     playsInline: true
                                 }, void 0, false, {
                                     fileName: "[project]/app/components/sections/ExperienceSection.tsx",
-                                    lineNumber: 709,
+                                    lineNumber: 1076,
                                     columnNumber: 19
                                 }, this) : /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])("div", {
                                     className: "exp-card-media-overlay",
@@ -6740,17 +7152,17 @@ function ExperienceSection() {
                                         children: "▶"
                                     }, void 0, false, {
                                         fileName: "[project]/app/components/sections/ExperienceSection.tsx",
-                                        lineNumber: 712,
+                                        lineNumber: 1079,
                                         columnNumber: 21
                                     }, this)
                                 }, void 0, false, {
                                     fileName: "[project]/app/components/sections/ExperienceSection.tsx",
-                                    lineNumber: 711,
+                                    lineNumber: 1078,
                                     columnNumber: 19
                                 }, this)
                             }, void 0, false, {
                                 fileName: "[project]/app/components/sections/ExperienceSection.tsx",
-                                lineNumber: 707,
+                                lineNumber: 1074,
                                 columnNumber: 15
                             }, this),
                             /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])("h4", {
@@ -6758,7 +7170,7 @@ function ExperienceSection() {
                                 children: "WHAT I DID"
                             }, void 0, false, {
                                 fileName: "[project]/app/components/sections/ExperienceSection.tsx",
-                                lineNumber: 717,
+                                lineNumber: 1084,
                                 columnNumber: 15
                             }, this),
                             /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])("ul", {
@@ -6768,23 +7180,23 @@ function ExperienceSection() {
                                         children: b
                                     }, i, false, {
                                         fileName: "[project]/app/components/sections/ExperienceSection.tsx",
-                                        lineNumber: 720,
+                                        lineNumber: 1087,
                                         columnNumber: 19
                                     }, this))
                             }, void 0, false, {
                                 fileName: "[project]/app/components/sections/ExperienceSection.tsx",
-                                lineNumber: 718,
+                                lineNumber: 1085,
                                 columnNumber: 15
                             }, this)
                         ]
                     }, void 0, true, {
                         fileName: "[project]/app/components/sections/ExperienceSection.tsx",
-                        lineNumber: 683,
+                        lineNumber: 1050,
                         columnNumber: 13
                     }, this)
                 }, void 0, false, {
                     fileName: "[project]/app/components/sections/ExperienceSection.tsx",
-                    lineNumber: 682,
+                    lineNumber: 1049,
                     columnNumber: 11
                 }, this);
             })(),
@@ -6796,7 +7208,7 @@ function ExperienceSection() {
                         children: "⌖"
                     }, void 0, false, {
                         fileName: "[project]/app/components/sections/ExperienceSection.tsx",
-                        lineNumber: 731,
+                        lineNumber: 1098,
                         columnNumber: 11
                     }, this),
                     /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])("span", {
@@ -6804,19 +7216,19 @@ function ExperienceSection() {
                         children: "find the hidden years"
                     }, void 0, false, {
                         fileName: "[project]/app/components/sections/ExperienceSection.tsx",
-                        lineNumber: 732,
+                        lineNumber: 1099,
                         columnNumber: 11
                     }, this)
                 ]
             }, void 0, true, {
                 fileName: "[project]/app/components/sections/ExperienceSection.tsx",
-                lineNumber: 730,
+                lineNumber: 1097,
                 columnNumber: 9
             }, this)
         ]
     }, void 0, true, {
         fileName: "[project]/app/components/sections/ExperienceSection.tsx",
-        lineNumber: 623,
+        lineNumber: 991,
         columnNumber: 5
     }, this);
 }

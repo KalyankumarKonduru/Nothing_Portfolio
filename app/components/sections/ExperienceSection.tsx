@@ -2,9 +2,35 @@
 
 import { useRef, useEffect, useState, useCallback, useMemo } from "react";
 import anime from "animejs";
+import { gsap } from "gsap";
+import { Draggable } from "gsap/dist/Draggable";
+import { interpolate } from "flubber";
 import { stampText, textPixelWidth } from "../pixel-font";
 import { playClockTick, initAudio } from "../clock-tick";
 import "./experience-section.css";
+
+/* ═══════════════════════════════════════
+   SVG Morphing Paths (100x100 viewBox)
+   ═══════════════════════════════════════ */
+const charPaths: Record<string, string> = {
+  "C": "M 80 20 L 60 20 L 60 40 L 40 40 L 40 60 L 60 60 L 60 80 L 80 80 L 80 100 L 20 100 L 20 0 L 80 0 Z",
+  "A": "M 40 0 L 60 0 L 100 100 L 80 100 L 70 70 L 30 70 L 20 100 L 0 100 Z M 50 20 L 35 55 L 65 55 Z",
+  "R": "M 20 0 L 70 0 C 85 0 95 10 95 30 C 95 50 85 60 70 60 L 50 60 L 85 100 L 60 100 L 40 60 L 40 100 L 20 100 Z M 40 20 L 40 40 L 65 40 C 70 40 75 35 75 30 C 75 25 70 20 65 20 Z",
+  "E": "M 20 0 L 80 0 L 80 20 L 40 20 L 40 40 L 70 40 L 70 60 L 40 60 L 40 80 L 80 80 L 80 100 L 20 100 Z",
+  "&": "M 80 90 L 95 100 L 70 75 C 80 65 85 50 80 35 C 75 15 50 5 35 20 C 20 35 20 65 35 80 C 50 95 70 95 80 90 Z M 45 35 C 55 25 60 35 55 45 C 50 55 40 50 45 35 Z M 45 70 C 35 60 35 50 45 45 C 55 40 65 60 55 70 C 45 80 40 70 45 70 Z",
+  "P": "M 20 0 L 70 0 C 90 0 100 15 100 35 C 100 55 90 70 70 70 L 40 70 L 40 100 L 20 100 Z M 40 20 L 40 50 L 65 50 C 75 50 80 45 80 35 C 80 25 75 20 65 20 Z",
+  "I": "M 40 0 L 60 0 L 60 100 L 40 100 Z",
+  "N": "M 20 0 L 40 0 L 70 60 L 70 0 L 90 0 L 90 100 L 70 100 L 40 40 L 40 100 L 20 100 Z",
+  "X": "M 10 0 L 35 0 L 50 40 L 65 0 L 90 0 L 65 50 L 90 100 L 65 100 L 50 60 L 35 100 L 10 100 L 35 50 Z",
+};
+
+const shapePaths = [
+  "M 50 0 C 77 0 100 23 100 50 C 100 77 77 100 50 100 C 23 100 0 77 0 50 C 0 23 23 0 50 0 Z", /* Circle */
+  "M 10 10 L 90 10 L 90 90 L 10 90 Z", /* Square */
+  "M 50 10 L 90 90 L 10 90 Z", /* Triangle */
+  "M 50 0 L 100 50 L 50 100 L 0 50 Z", /* Diamond */
+  "M 50 0 L 65 35 L 100 35 L 70 60 L 80 100 L 50 75 L 20 100 L 30 60 L 0 35 L 35 35 Z", /* Star */
+];
 
 /* ═══════════════════════════════════════
    Career data
@@ -330,6 +356,15 @@ export default function ExperienceSection() {
 
     /* Glow state */
     const glows = new Float32Array(N);
+    const pulseStart = new Float32Array(N); /* timestamp when pulse begins */
+    const PULSE_DUR = 600; /* ms for one pulse up+down */
+
+    /* Directional wave state */
+    let prevMx = -9999;
+    let prevMy = -9999;
+    let cursorStoppedFrames = 0;
+    let waveActive = false;
+    const WAVE_SPEED = 0.4; /* px per ms — how fast the wave front travels */
     const RADIUS = 180;
     const R2 = RADIUS * RADIUS;
     const INV_R = 1 / RADIUS;
@@ -394,6 +429,65 @@ export default function ExperienceSection() {
             }
           }
         }
+      }
+
+      /* Directional wave: when cursor moves, launch a wave in movement direction.
+         Dots ahead of cursor (in movement direction) pulse with delay proportional
+         to their distance along that direction. Wave travels to screen edge. */
+      {
+        const velX = mx - prevMx;
+        const velY = my - prevMy;
+        const speed = Math.sqrt(velX * velX + velY * velY);
+
+        if (speed > 3) {
+          /* Cursor is moving — launch a new wave */
+          cursorStoppedFrames = 0;
+          if (!waveActive) waveActive = true;
+
+          /* Normalize direction */
+          const dirX = velX / speed;
+          const dirY = velY / speed;
+
+          const now = performance.now();
+
+          /* Project every dot onto the movement direction from cursor position.
+             Only dots in the forward half (positive projection) get pulsed.
+             Delay = projected distance / wave speed */
+          for (let i = 0; i < N; i++) {
+            const gx = i % cols;
+            const gy = Math.floor(i / cols);
+            const px = oX + gx * step + half;
+            const py = oY + gy * step + half;
+            const toX = px - mx;
+            const toY = py - my;
+
+            /* Project onto direction vector */
+            const proj = toX * dirX + toY * dirY;
+
+            /* Only forward dots (positive projection), skip dots behind cursor */
+            if (proj > 0 && proj < 1200) {
+              /* Perpendicular distance — only pulse dots within a band */
+              const perp = Math.abs(toX * (-dirY) + toY * dirX);
+              if (perp < RADIUS * 1.5) {
+                /* Skip dots already mid-pulse */
+                if (pulseStart[i] > 0) {
+                  const el = now - pulseStart[i];
+                  if (el >= 0 && el < PULSE_DUR) continue;
+                }
+                /* Delay based on distance along wave direction */
+                pulseStart[i] = now + proj / WAVE_SPEED;
+              }
+            }
+          }
+        } else {
+          cursorStoppedFrames++;
+          if (cursorStoppedFrames > 10) {
+            waveActive = false;
+          }
+        }
+
+        prevMx = mx;
+        prevMy = my;
       }
 
 
@@ -463,6 +557,7 @@ export default function ExperienceSection() {
 
       /* Clear & draw */
       ctx.clearRect(0, 0, W, H);
+      const drawNow = performance.now();
       for (let i = 0; i < N; i++) {
         if (glows[i] > 0.005) {
           const gx = i % cols;
@@ -476,20 +571,36 @@ export default function ExperienceSection() {
             py = origY + (py - origY) * disperseEase;
           }
 
+          /* Stagger pulse scale: 1.0 → 1.3 → 1.0 over PULSE_DUR ms */
+          let scale = 1;
+          if (pulseStart[i] > 0) {
+            const elapsed = drawNow - pulseStart[i];
+            if (elapsed >= 0 && elapsed < PULSE_DUR) {
+              const t = elapsed / PULSE_DUR;
+              /* Sin curve: 0→1→0 */
+              scale = 1 + 0.3 * Math.sin(t * Math.PI);
+            } else if (elapsed >= PULSE_DUR) {
+              pulseStart[i] = 0; /* pulse done */
+            }
+          }
+
+          const drawSize = spriteSize * scale;
+          const halfDraw = drawSize / 2;
+
           ctx.globalAlpha = glows[i];
 
           if (isYearDot[i] && glows[i] > 0.35) {
             const tint = Math.min(1, (glows[i] - 0.35) * 3);
-            ctx.drawImage(sprite, px - halfSprite, py - halfSprite, spriteSize, spriteSize);
+            ctx.drawImage(sprite, px - halfDraw, py - halfDraw, drawSize, drawSize);
             if (tint > 0.1) {
               ctx.globalAlpha = tint * 0.6;
               ctx.fillStyle = "#ffffff";
               ctx.beginPath();
-              ctx.arc(px, py, half, 0, Math.PI * 2);
+              ctx.arc(px, py, half * scale, 0, Math.PI * 2);
               ctx.fill();
             }
           } else {
-            ctx.drawImage(sprite, px - halfSprite, py - halfSprite, spriteSize, spriteSize);
+            ctx.drawImage(sprite, px - halfDraw, py - halfDraw, drawSize, drawSize);
           }
         }
       }
@@ -549,33 +660,306 @@ export default function ExperienceSection() {
     return () => cancelAnimationFrame(rafRef.current);
   }, [isActive]);
 
-  /* ── Animate marquee chars ── */
+  /* ── Interactive Draggable Characters (Safe Custom Implementation) ── */
   useEffect(() => {
     if (!isActive || !marqueeRef.current) return;
-    const chars = marqueeRef.current.querySelectorAll<HTMLSpanElement>(".exp-marquee-char");
+    
+    const chars = marqueeRef.current.querySelectorAll<HTMLElement>(".exp-marquee-char");
     if (chars.length === 0) return;
 
-    anime({
-      targets: Array.from(chars),
-      translateY: [
-        { to: -6, duration: 400 },
-        { to: 0, duration: 400 },
-      ],
-      rotateZ: [
-        { to: -8, duration: 300 },
-        { to: 8, duration: 300 },
-        { to: 0, duration: 300 },
-      ],
-      scale: [
-        { to: 1.15, duration: 250 },
-        { to: 1, duration: 250 },
-      ],
-      delay: ((_el: unknown, i: number) => i * 40) as unknown as number,
-      loop: true,
-      ease: "inOutSine",
+    /* Custom drag implementation because GSAP Draggable destroys the inline layout math */
+    let activeChar: HTMLElement | null = null;
+    let startX = 0;
+    let startY = 0;
+    let currentX = 0;
+    let currentY = 0;
+
+    const onPointerDown = (e: PointerEvent) => {
+      e.preventDefault(); // Prevent native drag/select
+      const target = e.currentTarget as HTMLElement;
+      activeChar = target;
+      
+      /* Record absolute mouse start */
+      startX = e.clientX;
+      startY = e.clientY;
+      
+      /* Use gsap.getProperty to reliably get current GSAP transforms (bypassing matrix/translate3d string CSS parsing issues) */
+      currentX = (gsap.getProperty(target, "x") as number) || 0;
+      currentY = (gsap.getProperty(target, "y") as number) || 0;
+
+      gsap.killTweensOf(target, "x,y,zIndex");
+      gsap.set(target, { zIndex: 100 });
+      
+      /* Listen on window to guarantee we don't drop events if the mouse moves very fast, leaves the element, or hits screen edges */
+      window.addEventListener("pointermove", onPointerMove);
+      window.addEventListener("pointerup", onPointerUp);
+      window.addEventListener("pointercancel", onPointerUp);
+    };
+
+    const onPointerMove = (e: PointerEvent) => {
+      if (!activeChar) return;
+      
+      const dx = e.clientX - startX;
+      const dy = e.clientY - startY;
+      
+      gsap.set(activeChar, {
+        x: currentX + dx,
+        y: currentY + dy
+      });
+    };
+
+    const onPointerUp = (e: PointerEvent) => {
+      if (!activeChar) return;
+      
+      gsap.to(activeChar, {
+        x: 0,
+        y: 0,
+        duration: 1.2,
+        ease: "elastic.out(1, 0.4)",
+        zIndex: 0,
+      });
+      
+      activeChar = null;
+      window.removeEventListener("pointermove", onPointerMove);
+      window.removeEventListener("pointerup", onPointerUp);
+      window.removeEventListener("pointercancel", onPointerUp);
+    };
+
+    chars.forEach(char => {
+      char.addEventListener("pointerdown", onPointerDown);
     });
+
+    return () => {
+      chars.forEach(char => {
+        char.removeEventListener("pointerdown", onPointerDown);
+        
+        /* Reset state on cleanup */
+        gsap.killTweensOf(char);
+      });
+      window.removeEventListener("pointermove", onPointerMove);
+      window.removeEventListener("pointerup", onPointerUp);
+      window.removeEventListener("pointercancel", onPointerUp);
+    };
   }, [isActive]);
 
+
+
+  /* ── Interpolator Cache to prevent main-thread freezing ── */
+  /* Flubber path interpolation is heavy. Calculate each unique path pairing exactly ONCE. */
+  const getInterpolator = useMemo(() => {
+    const cache = new Map<string, (t: number) => string>();
+    return (fromPath: string, toPath: string) => {
+      const key = `${fromPath}|${toPath}`;
+      if (cache.has(key)) return cache.get(key)!;
+      const interpolator = interpolate(fromPath, toPath, { maxSegmentLength: 2 });
+      cache.set(key, interpolator);
+      return interpolator;
+    };
+  }, []);
+
+  /* ── Per-character SVG Path Morphing ── */
+  useEffect(() => {
+    if (!isActive || !marqueeRef.current) return;
+
+    const charPathsElements = Array.from(marqueeRef.current.querySelectorAll<SVGPathElement>(".exp-svg-char-path"));
+    if (charPathsElements.length === 0) return;
+
+    const timelines: gsap.core.Timeline[] = [];
+
+    // The text block "CAREER & EXPERIENCE" renders exactly 17 SVGs (spaces are skipped).
+    // CAREER = indices 0-5
+    // & = index 6
+    // EXPERIENCE = indices 7-16
+    const pathsPerBlock = 17;
+    const blocksCount = Math.floor(charPathsElements.length / pathsPerBlock);
+
+    function getShuffled<T>(array: T[], count: number): T[] {
+      const cloned = [...array];
+      for (let i = cloned.length - 1; i > 0; i--) {
+        const j = Math.floor(Math.random() * (i + 1));
+        [cloned[i], cloned[j]] = [cloned[j], cloned[i]];
+      }
+      return cloned.slice(0, count);
+    }
+
+    const careerPool = [0, 1, 2, 3, 4, 5];
+    const expPool = [7, 8, 9, 10, 11, 12, 13, 14, 15, 16];
+
+    for (let b = 0; b < blocksCount; b++) {
+      const blockStartIndex = b * pathsPerBlock;
+      
+      const careerSelected = getShuffled(careerPool, 2);
+      const expSelected = getShuffled(expPool, 3);
+      const animatedIndices = new Set([...careerSelected, ...expSelected]);
+
+      for (let relIdx = 0; relIdx < pathsPerBlock; relIdx++) {
+        // Skip characters not selected for this block iteration
+        if (!animatedIndices.has(relIdx)) continue;
+
+        const globalIdx = blockStartIndex + relIdx;
+        const pathEl = charPathsElements[globalIdx];
+        if (!pathEl) continue;
+
+        const originalPath = pathEl.getAttribute("data-original");
+        if (!originalPath) continue;
+
+        // Use globalIdx 'i' for deterministic deterministic-looking shape logic or randomized logic
+        const i = globalIdx;
+
+      /* Pick 3 constant shapes from the pool for this character */
+      const targetPaths = [
+        shapePaths[i % shapePaths.length],
+        shapePaths[(i + 2) % shapePaths.length],
+        shapePaths[(i + 4) % shapePaths.length],
+      ];
+
+      const tl = gsap.timeline({
+        repeat: -1,
+        delay: (i % 19) * 0.4,
+      });
+
+      targetPaths.forEach((targetPath, shapeIdx) => {
+        /* Grab cached interpolators */
+        const toShape = getInterpolator(originalPath, targetPath);
+        const fromShape = getInterpolator(targetPath, originalPath);
+        
+        /* Object for GSAP to tween */
+        const proxy = { progress: 0 };
+
+        /* Morph Letter -> Shape */
+        tl.to(proxy, {
+          progress: 1,
+          duration: 0.8,
+          ease: "expo.inOut",
+          onUpdate: () => pathEl.setAttribute("d", toShape(proxy.progress)),
+        });
+
+        /* Recolor slightly and subtly scale the SVG container during shape */
+        const svgEl = pathEl.closest("svg");
+        if (svgEl) {
+          tl.to(
+            svgEl,
+            {
+              scale: 1.15,
+              rotation: (Math.random() - 0.5) * 20,
+              duration: 0.8,
+              ease: "expo.inOut",
+            },
+            "<"
+          );
+          tl.to(
+            pathEl,
+            {
+              fill: `hsla(${(i * 37) % 360}, 60%, 80%, 1)`,
+              duration: 0.8,
+            },
+            "<"
+          );
+        }
+
+        /* Hold shape */
+        tl.to({}, { duration: 1.0 });
+
+        /* Reset proxy for return trip */
+        tl.set(proxy, { progress: 0 });
+
+        /* Morph Shape -> Letter */
+        tl.to(proxy, {
+          progress: 1,
+          duration: 0.8,
+          ease: "expo.inOut",
+          onUpdate: () => pathEl.setAttribute("d", fromShape(proxy.progress)),
+        });
+
+        /* Reset container scale/rotation and color */
+        if (svgEl) {
+          tl.to(
+            svgEl,
+            { scale: 1, rotation: 0, duration: 0.8, ease: "expo.inOut" },
+            "<"
+          );
+          tl.to(
+            pathEl,
+            { fill: "#ffffff", duration: 0.8 },
+            "<"
+          );
+        }
+
+        /* Hold letter */
+        tl.to({}, { duration: 0.6 });
+      });
+
+      timelines.push(tl);
+      }
+    }
+
+    return () => {
+      timelines.forEach((tl) => tl.kill());
+      /* Ensure paths are reset */
+      charPathsElements.forEach((pathEl) => {
+        pathEl.setAttribute("d", pathEl.getAttribute("data-original") || "");
+        gsap.set(pathEl, { clearProps: "all" });
+        const svgEl = pathEl.closest("svg");
+        if (svgEl) gsap.set(svgEl, { clearProps: "all" });
+      });
+    };
+  }, [isActive]);
+
+  /* ── Marquee text builder (renders SVGs for morphing) ── */
+  const marqueeText = "CAREER & EXPERIENCE";
+  const buildMarqueeChars = (key: string) => (
+    <span className="exp-marquee-text" key={key}>
+      {marqueeText.split("").map((ch, i) => {
+        const isSpace = ch === " ";
+        const pathData = charPaths[ch] || "";
+
+        return (
+          <span
+            key={`${key}-${i}`}
+            className="exp-marquee-char"
+            style={{ 
+              display: "inline-flex", 
+              justifyContent: "center",
+              alignItems: "center",
+              width: isSpace ? "0.4em" : "1em",
+              height: "1em",
+              minWidth: isSpace ? "0.4em" : "1em",
+              maxWidth: isSpace ? "0.4em" : "1em",
+              flexBasis: isSpace ? "0.4em" : "1em",
+              flexShrink: 0,
+              flexGrow: 0,
+              margin: isSpace ? "0" : "0 0.05em",
+              verticalAlign: "middle",
+              position: "relative",
+              pointerEvents: isSpace ? "none" : "auto", 
+              cursor: isSpace ? "default" : "grab",
+            }}
+          >
+            {!isSpace && pathData ? (
+              <svg 
+                viewBox="0 0 100 100" 
+                style={{ 
+                  width: "100%", 
+                  height: "100%", 
+                  minWidth: "100%", 
+                  display: "block", 
+                  overflow: "visible",
+                  flexShrink: 0  
+                }}
+              >
+                <path 
+                  className="exp-svg-char-path"
+                  d={pathData} 
+                  data-original={pathData}
+                  fill="#ffffff"
+                />
+              </svg>
+            ) : null}
+          </span>
+        );
+      })}
+    </span>
+  );
   /* ── Year click handler ── */
   const handleYearClick = useCallback((year: string) => {
     initAudio();
@@ -591,22 +975,6 @@ export default function ExperienceSection() {
       });
     }
   }, []);
-
-  /* ── Marquee text builder ── */
-  const marqueeText = "CAREER & EXPERIENCE";
-  const buildMarqueeChars = (key: string) => (
-    <span className="exp-marquee-text" key={key}>
-      {marqueeText.split("").map((ch, i) => (
-        <span
-          key={`${key}-${i}`}
-          className="exp-marquee-char"
-          style={{ display: "inline-block" }}
-        >
-          {ch === " " ? "\u00A0" : ch}
-        </span>
-      ))}
-    </span>
-  );
 
   /* ── Mini marquee for cards ── */
   const buildMiniMarquee = (text: string) => (
@@ -633,7 +1001,6 @@ export default function ExperienceSection() {
           {Array.from({ length: 8 }, (_, i) => (
             <span key={i}>
               {buildMarqueeChars(`m${i}`)}
-              <span className="exp-marquee-sep">◆</span>
             </span>
           ))}
         </div>

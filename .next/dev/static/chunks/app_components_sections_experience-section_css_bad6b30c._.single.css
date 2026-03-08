@@ -10,7 +10,7 @@
   --exp-card-bg: #0a0a0a;
   --exp-card-border: #ffffff12;
   --exp-glow-spread: 220px;
-  --exp-marquee-speed: 18s;
+  --exp-marquee-speed: 40s;
   --exp-mini-marquee-speed: 10s;
   --exp-card-reveal-duration: .6s;
 }
@@ -26,7 +26,7 @@
   height: 400vh;
   transition: opacity .6s;
   position: relative;
-  overflow-x: hidden;
+  overflow: visible;
 }
 
 .exp-section.active {
@@ -83,77 +83,57 @@
 }
 
 .exp-marquee {
-  background: var(--exp-accent);
   z-index: 4;
   will-change: transform;
+  background: none;
   width: 100vw;
-  height: 56px;
+  height: clamp(100px, 18vw, 200px);
   position: absolute;
   top: 0;
   left: 0;
-  overflow: hidden;
+  overflow: visible;
   transform: translateZ(0);
-  box-shadow: 0 0 30px #ffffff26, 0 0 60px #ffffff0d;
 }
 
 .exp-marquee:before, .exp-marquee:after {
-  content: "";
-  z-index: 2;
-  pointer-events: none;
-  width: 60px;
-  position: absolute;
-  top: 0;
-  bottom: 0;
-}
-
-.exp-marquee:before {
-  background: linear-gradient(90deg, var(--exp-accent), transparent);
-  left: 0;
-}
-
-.exp-marquee:after {
-  background: linear-gradient(270deg, var(--exp-accent), transparent);
-  right: 0;
+  display: none;
 }
 
 .exp-marquee-track {
+  white-space: nowrap;
+  width: max-content;
   height: 100%;
   animation: expMarquee var(--exp-marquee-speed) linear infinite;
   will-change: transform;
-  align-items: center;
-  display: flex;
+  display: block;
   transform: translateZ(0);
 }
 
 .exp-marquee-text {
+  vertical-align: middle;
   font-family: var(--font-mono), monospace;
-  color: #000;
+  color: #fff;
   text-transform: uppercase;
-  letter-spacing: 8px;
+  letter-spacing: .02em;
   white-space: nowrap;
   -webkit-user-select: none;
   user-select: none;
-  flex-shrink: 0;
-  padding: 0 40px;
-  font-size: 16px;
-  font-weight: 700;
-  line-height: 56px;
+  text-shadow: 0 0 30px #ffffff4d, 0 0 60px #ffffff1a;
+  padding-right: 60px;
+  font-size: clamp(40px, 10vw, 120px);
+  font-weight: 800;
+  line-height: clamp(100px, 18vw, 200px);
+  display: inline-block;
 }
 
 .exp-marquee-char {
   will-change: transform;
-  transform-origin: bottom;
+  backface-visibility: hidden;
   display: inline-block;
 }
 
-.exp-marquee-sep {
-  font-family: var(--font-mono), monospace;
-  color: #00000080;
-  -webkit-user-select: none;
-  user-select: none;
-  flex-shrink: 0;
-  padding: 0 16px;
-  font-size: 10px;
+.exp-marquee-char svg {
+  filter: drop-shadow(0 0 15px #ffffff4d) drop-shadow(0 0 30px #ffffff1a);
 }
 
 .exp-zigzag-line {
@@ -595,15 +575,14 @@
   }
 
   .exp-marquee {
-    height: 42px;
+    height: clamp(50px, 12vw, 80px);
     top: 30%;
   }
 
   .exp-marquee-text {
-    letter-spacing: 5px;
-    padding: 0 20px;
-    font-size: 11px;
-    line-height: 42px;
+    padding: 0 10px;
+    font-size: clamp(20px, 8vw, 50px);
+    line-height: clamp(50px, 12vw, 80px);
   }
 
   .exp-year-number {
@@ -672,14 +651,13 @@
   }
 
   .exp-marquee {
-    height: 48px;
+    height: clamp(60px, 14vw, 120px);
   }
 
   .exp-marquee-text {
-    letter-spacing: 6px;
-    padding: 0 28px;
-    font-size: 13px;
-    line-height: 48px;
+    padding: 0 20px;
+    font-size: clamp(30px, 8vw, 80px);
+    line-height: clamp(60px, 14vw, 120px);
   }
 
   .exp-timeline {

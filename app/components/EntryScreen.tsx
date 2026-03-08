@@ -273,6 +273,13 @@ export default function EntryScreen({ onEnter }: { onEnter: () => void }) {
     const RADIUS = 180;
     const R2 = RADIUS * RADIUS;
     const INV_R = 1 / RADIUS;
+    const entryPulseStart = new Float32Array(N);
+    const ENTRY_PULSE_DUR = 600;
+    let entryPrevMx = -9999;
+    let entryPrevMy = -9999;
+    let entryStoppedFrames = 0;
+    let entryWaveActive = false;
+    const ENTRY_WAVE_SPEED = 0.4;
     let time = 0;
     let lastTickX = -9999;
     let lastTickY = -9999;
@@ -412,6 +419,59 @@ export default function EntryScreen({ onEnter }: { onEnter: () => void }) {
       /* Update cursor glow overlay */
       if (glowRef.current) {
         glowRef.current.style.background = `radial-gradient(circle 200px at ${mx}px ${my}px, rgba(255,255,255,0.04), transparent 70%)`;
+      }
+
+      /* ── Directional wave pulse ── */
+      {
+        const velX = mx - entryPrevMx;
+        const velY = my - entryPrevMy;
+        const speed = Math.sqrt(velX * velX + velY * velY);
+
+        if (speed > 3) {
+          entryStoppedFrames = 0;
+          entryWaveActive = true;
+          const dirX = velX / speed;
+          const dirY = velY / speed;
+          const now = performance.now();
+
+          for (let i = 0; i < N; i++) {
+            const toX = centersX[i] - mx;
+            const toY = centersY[i] - my;
+            const proj = toX * dirX + toY * dirY;
+            if (proj > 0 && proj < 1200) {
+              const perp = Math.abs(toX * (-dirY) + toY * dirX);
+              if (perp < RADIUS * 1.5) {
+                if (entryPulseStart[i] > 0) {
+                  const el = now - entryPulseStart[i];
+                  if (el >= 0 && el < ENTRY_PULSE_DUR) continue;
+                }
+                entryPulseStart[i] = now + proj / ENTRY_WAVE_SPEED;
+              }
+            }
+          }
+        } else {
+          entryStoppedFrames++;
+          if (entryStoppedFrames > 10) entryWaveActive = false;
+        }
+        entryPrevMx = mx;
+        entryPrevMy = my;
+      }
+
+      /* Apply pulse scale to DOM dots */
+      {
+        const pNow = performance.now();
+        for (let i = 0; i < N; i++) {
+          if (entryPulseStart[i] > 0) {
+            const pEl = pNow - entryPulseStart[i];
+            if (pEl >= 0 && pEl < ENTRY_PULSE_DUR) {
+              const s = 1 + 0.3 * Math.sin((pEl / ENTRY_PULSE_DUR) * Math.PI);
+              els[i].style.transform = `scale(${s})`;
+            } else if (pEl >= ENTRY_PULSE_DUR) {
+              entryPulseStart[i] = 0;
+              els[i].style.transform = "";
+            }
+          }
+        }
       }
 
       rafRef.current = requestAnimationFrame(glowLoop);

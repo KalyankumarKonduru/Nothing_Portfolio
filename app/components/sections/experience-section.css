@@ -14,7 +14,7 @@
   --exp-card-bg: #0a0a0a;
   --exp-card-border: #ffffff12;
   --exp-glow-spread: 220px;
-  --exp-marquee-speed: 18s;
+  --exp-marquee-speed: 40s;
   --exp-mini-marquee-speed: 10s;
   --exp-card-reveal-duration: 600ms;
 }
@@ -27,7 +27,7 @@
   width: 100vw;
   height: 400vh; /* Expansive map scroll area */
   background: var(--exp-bg);
-  overflow-x: hidden;
+  overflow: visible; /* Changed from overflow-x: hidden to prevent Draggable clipping */
   cursor: crosshair;
   z-index: 15;
   opacity: 0;
@@ -70,6 +70,8 @@
   z-index: 1;
   pointer-events: none;
 }
+
+
 
 /* Individual dot in the grid */
 .exp-dot {
@@ -115,76 +117,54 @@
   top: 0;
   left: 0;
   width: 100vw;
-  height: 56px;
-  background: var(--exp-accent);
-  overflow: hidden;
+  height: clamp(100px, 18vw, 200px);
+  background: transparent;
+  overflow: visible;
   z-index: 4;
   transform: translateZ(0);
   will-change: transform;
-  box-shadow:
-    0 0 30px rgba(255, 255, 255, 0.15),
-    0 0 60px rgba(255, 255, 255, 0.05);
 }
 
 .exp-marquee::before,
 .exp-marquee::after {
-  content: "";
-  position: absolute;
-  top: 0;
-  bottom: 0;
-  width: 60px;
-  z-index: 2;
-  pointer-events: none;
-}
-
-.exp-marquee::before {
-  left: 0;
-  background: linear-gradient(90deg, var(--exp-accent), transparent);
-}
-
-.exp-marquee::after {
-  right: 0;
-  background: linear-gradient(270deg, var(--exp-accent), transparent);
+  display: none;
 }
 
 .exp-marquee-track {
-  display: flex;
-  align-items: center;
+  display: block;
+  white-space: nowrap;
   height: 100%;
+  width: max-content;
   animation: expMarquee var(--exp-marquee-speed) linear infinite;
   will-change: transform;
   transform: translateZ(0);
 }
 
 .exp-marquee-text {
-  flex-shrink: 0;
+  display: inline-block;
+  vertical-align: middle;
+  padding-right: 60px; /* Spacing between repeated phrases */
   font-family: var(--font-mono), monospace;
-  font-size: 16px;
-  font-weight: 700;
-  color: #000000;
+  font-size: clamp(40px, 10vw, 120px);
+  font-weight: 800;
+  color: #ffffff;
   text-transform: uppercase;
-  letter-spacing: 8px;
+  letter-spacing: 0.02em;
   white-space: nowrap;
-  padding: 0 40px;
-  line-height: 56px;
+  line-height: clamp(100px, 18vw, 200px);
   user-select: none;
+  text-shadow: 0 0 30px rgba(255,255,255,0.3), 0 0 60px rgba(255,255,255,0.1);
 }
 
-/* Individual characters for anime.js dancing */
+/* Individual characters for GSAP SVG morphing */
 .exp-marquee-char {
   display: inline-block;
   will-change: transform;
-  transform-origin: center bottom;
+  backface-visibility: hidden;
 }
 
-/* Diamond separator between repeated texts */
-.exp-marquee-sep {
-  flex-shrink: 0;
-  font-family: var(--font-mono), monospace;
-  font-size: 10px;
-  color: rgba(0,0,0,0.5);
-  padding: 0 16px;
-  user-select: none;
+.exp-marquee-char svg {
+  filter: drop-shadow(0 0 15px rgba(255,255,255,0.3)) drop-shadow(0 0 30px rgba(255,255,255,0.1));
 }
 
 /* ═══════════════════════════════════════
@@ -675,15 +655,14 @@
 
   /* Marquee */
   .exp-marquee {
-    height: 42px;
+    height: clamp(50px, 12vw, 80px);
     top: 30%;
   }
 
   .exp-marquee-text {
-    font-size: 11px;
-    letter-spacing: 5px;
-    line-height: 42px;
-    padding: 0 20px;
+    font-size: clamp(20px, 8vw, 50px);
+    padding: 0 10px;
+    line-height: clamp(50px, 12vw, 80px);
   }
 
   /* Timeline */
@@ -762,14 +741,13 @@
 
   /* Marquee */
   .exp-marquee {
-    height: 48px;
+    height: clamp(60px, 14vw, 120px);
   }
 
   .exp-marquee-text {
-    font-size: 13px;
-    letter-spacing: 6px;
-    line-height: 48px;
-    padding: 0 28px;
+    font-size: clamp(30px, 8vw, 80px);
+    padding: 0 20px;
+    line-height: clamp(60px, 14vw, 120px);
   }
 
   /* Timeline */
