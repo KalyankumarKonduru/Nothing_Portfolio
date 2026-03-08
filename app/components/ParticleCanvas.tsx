@@ -356,8 +356,8 @@ export default function ParticleCanvas() {
         for (let i = 0; i < N; i++) { glows[i] = 0; }
       }
 
-      /* ── Update hero overlay, bottom bar & nav visibility ── */
-      const heroOpacity = activeSec === 0 ? Math.max(0, 1 - t * 3) : 0;
+      /* Fade hero overlay based on scroll — gone by 30% scroll */
+      const heroOpacity = Math.max(0, 1 - progress * 3);
       if (heroOverlayRef.current) {
         heroOverlayRef.current.style.opacity = String(heroOpacity);
       }

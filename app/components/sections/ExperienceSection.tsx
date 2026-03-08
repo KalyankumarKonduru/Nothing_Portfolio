@@ -26,7 +26,7 @@ const CAREER: CareerEntry[] = [
     role: "Software Engineer Intern",
     roleMarquee: "INTERNSHIP",
     description:
-      "Built MedQuery — a clinical AI assistant powered by MCP servers and RAG pipelines. The platform helps healthcare professionals query patient data using natural language, with BioClinicalBERT entity extraction and a real-time analytics dashboard.",
+      "Medical Informatics Engineering (MIE) builds healthcare IT solutions, evolving from ambulatory EHRs to specialized digital health platforms, driving innovation in clinical data and modern care systems since 1995.",
     bullets: [
       "Architected 3 MCP servers with 28 medical tools for clinical data retrieval",
       "Implemented BioClinicalBERT NER pipeline for medical entity extraction",
@@ -35,20 +35,22 @@ const CAREER: CareerEntry[] = [
       "Reduced query response time from 4.8s to 1.2s with Redis caching layer",
       "Achieved 92% accuracy on clinical entity extraction benchmarks",
     ],
+    videoSrc: "/MIE.mp4",
   },
   {
     year: "2024",
     company: "PURDUE UNIVERSITY",
-    role: "Graduate Research Assistant",
-    roleMarquee: "RESEARCH",
+    role: "Master of Science in Computer Science",
+    roleMarquee: "EDUCATION",
     description:
-      "MS Computer Science focused on distributed systems and AI/ML applications. Contributed to research on scalable microservice architectures and LLM-powered development tools.",
+      "Purdue University Fort Wayne offers a prestigious Purdue degree within a dynamic metropolitan setting. Recognized for its top-tier College of Engineering, Technology, and Computer Science, PFW combines rigorous STEM academics with the personalized mentorship of a small-campus environment.",
     bullets: [
-      "Published research on microservice fault tolerance patterns",
-      "Built LLM-powered code review tool used by 200+ students",
-      "Designed distributed job scheduler handling 1,200 jobs/min",
-      "TA for CS 408 — Software Testing, graded 140+ students",
+      "Engineered an AWS serverless event pipeline utilizing Go Lambdas, API Gateway, and DynamoDB",
+      "Designed a distributed Go job scheduler handling 1,200 jobs/min with zero drops",
+      "Developed a full-stack Next.js and Go e-commerce storefront achieving a 98.5 Lighthouse score",
+      "Built a GraphQL search application delivering infinite scroll and sub-100ms response times",
     ],
+    videoSrc: "/PFW.mp4",
   },
   {
     year: "2023",
@@ -64,6 +66,7 @@ const CAREER: CareerEntry[] = [
       "Achieved 87% test coverage before first production deploy",
       "Mentored 3 junior developers on React best practices",
     ],
+    videoSrc: "/accenture.mp4",
   },
   {
     year: "2021",
@@ -79,6 +82,7 @@ const CAREER: CareerEntry[] = [
       "Wrote 140+ tests across cart, catalog, and payment modules",
       "Collaborated with UX team on responsive mobile-first design",
     ],
+    videoSrc: "/accenture.mp4",
   },
   {
     year: "2019",
@@ -123,7 +127,7 @@ export default function ExperienceSection() {
   const [activeYear, setActiveYear] = useState<string | null>(null);
   const [revealedYears, setRevealedYears] = useState<Set<string>>(new Set());
   const revealedYearsRef = useRef<Set<string>>(new Set());
-  
+
   // Keep ref in sync for the scroll listener without remounting
   useEffect(() => {
     revealedYearsRef.current = revealedYears;
@@ -186,7 +190,7 @@ export default function ExperienceSection() {
         const rect = sectionRef.current.getBoundingClientRect();
         // rect.top is relative to viewport. If it's <= 0, we're inside or past it.
         const scrollProgress = Math.max(0, Math.min(1, -rect.top / (rect.height - H)));
-        
+
         let maxAllowed = 0;
         if (revealedYearsRef.current.has("2025")) {
           maxAllowed = 0.25; // allowed to draw to 2024
@@ -200,17 +204,17 @@ export default function ExperienceSection() {
             }
           }
         }
-        
+
         const allowedProgress = Math.min(scrollProgress, maxAllowed);
-        
+
         try {
           const totalLength = zigzagPathRef.current.getTotalLength();
           zigzagPathRef.current.style.strokeDasharray = `${totalLength}`;
           zigzagPathRef.current.style.strokeDashoffset = `${totalLength * (1 - allowedProgress)}`;
-          
+
           zigzagGlowRef.current.style.strokeDasharray = `${totalLength}`;
           zigzagGlowRef.current.style.strokeDashoffset = `${totalLength * (1 - allowedProgress)}`;
-        } catch (e) {}
+        } catch (e) { }
       }
     };
     window.addEventListener("scroll", handleScroll, { passive: true });
@@ -702,7 +706,7 @@ export default function ExperienceSection() {
 
               <div className="exp-card-media">
                 {entry.videoSrc ? (
-                  <video src={entry.videoSrc} muted loop playsInline />
+                  <video src={entry.videoSrc} autoPlay muted loop playsInline />
                 ) : (
                   <div className="exp-card-media-overlay">
                     <span className="exp-card-media-icon">▶</span>
