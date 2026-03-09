@@ -179,8 +179,8 @@ export default function ExperienceSection() {
     if (!sectionRef.current) return new Map<string, { x: number; y: number }>();
     const W = sectionRef.current.clientWidth || window.innerWidth;
     const MathH = Math.max(sectionRef.current.clientHeight, window.innerHeight * 4);
-    const blockSize = W < 600 ? 14 : W < 1024 ? 18 : 22;
-    const gap = W < 600 ? 2 : 3;
+    const blockSize = W < 480 ? 7 : W < 768 ? 10 : W < 1024 ? 18 : 22;
+    const gap = W < 480 ? 1 : W < 768 ? 2 : 3;
     const stp = blockSize + gap;
     const c = Math.floor(W / stp);
     const r = Math.floor(MathH / stp);
@@ -338,8 +338,8 @@ export default function ExperienceSection() {
     ctx.scale(dpr, dpr);
 
     /* Grid sizing (matches entry screen) */
-    const blockSize = W < 600 ? 14 : W < 1024 ? 18 : 22;
-    const gap = W < 600 ? 2 : 3;
+    const blockSize = W < 480 ? 7 : W < 768 ? 10 : W < 1024 ? 18 : 22;
+    const gap = W < 480 ? 1 : W < 768 ? 2 : 3;
     const step = blockSize + gap;
     const cols = Math.floor(W / step);
     const rows = Math.floor(H / step);
