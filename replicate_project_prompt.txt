@@ -1,0 +1,6253 @@
+Please create a Next.js project with the following file structure and contents. 
+
+## Directory Structure
+- /
+  - .gitignore
+  - app/components/EntryScreen.tsx
+  - app/components/ParticleCanvas.tsx
+  - app/components/clock-tick.ts
+  - app/components/entry-screen.css
+  - app/components/particle-canvas.css
+  - app/components/pixel-font.ts
+  - app/components/sections/AboutSection.tsx
+  - app/components/sections/ContactSection.tsx
+  - app/components/sections/ExperienceSection.tsx
+  - app/components/sections/HeroSection.tsx
+  - app/components/sections/ProjectsSection.tsx
+  - app/components/sections/SkillsSection.tsx
+  - app/components/sections/about-section.css
+  - app/components/sections/contact-section.css
+  - app/components/sections/experience-section.css
+  - app/components/sections/hero-section.css
+  - app/components/sections/index.ts
+  - app/components/sections/projects-section.css
+  - app/components/sections/skills-section.css
+  - app/components/sections/types.ts
+  - app/globals.css
+  - app/layout.tsx
+  - app/page.tsx
+  - next-env.d.ts
+  - next.config.ts
+  - package.json
+  - tsconfig.json
+
+## File Contents
+### File: .gitignore
+```
+node_modules
+dist
+.vscode/*
+!.vscode/extensions.json
+.DS_Store
+.next
+
+```
+
+### File: app/components/EntryScreen.tsx
+```tsx
+"use client";
+
+import { useRef, useEffect, useCallback, useState } from "react";
+import anime from "animejs";
+import "./entry-screen.css";
+import { playClockTick, initAudio } from "./clock-tick";
+
+/* ─── Pixel-art font: each char is 5 cols × 7 rows ─── */
+const FONT: Record<string, number[][]> = {
+  K: [
+    [1, 0, 0, 0, 1],
+    [1, 0, 0, 1, 0],
+    [1, 0, 1, 0, 0],
+    [1, 1, 0, 0, 0],
+    [1, 0, 1, 0, 0],
+    [1, 0, 0, 1, 0],
+    [1, 0, 0, 0, 1],
+  ],
+  A: [
+    [0, 1, 1, 1, 0],
+    [1, 0, 0, 0, 1],
+    [1, 0, 0, 0, 1],
+    [1, 1, 1, 1, 1],
+    [1, 0, 0, 0, 1],
+    [1, 0, 0, 0, 1],
+    [1, 0, 0, 0, 1],
+  ],
+  L: [
+    [1, 0, 0, 0, 0],
+    [1, 0, 0, 0, 0],
+    [1, 0, 0, 0, 0],
+    [1, 0, 0, 0, 0],
+    [1, 0, 0, 0, 0],
+    [1, 0, 0, 0, 0],
+    [1, 1, 1, 1, 1],
+  ],
+  Y: [
+    [1, 0, 0, 0, 1],
+    [1, 0, 0, 0, 1],
+    [0, 1, 0, 1, 0],
+    [0, 0, 1, 0, 0],
+    [0, 0, 1, 0, 0],
+    [0, 0, 1, 0, 0],
+    [0, 0, 1, 0, 0],
+  ],
+  N: [
+    [1, 0, 0, 0, 1],
+    [1, 1, 0, 0, 1],
+    [1, 0, 1, 0, 1],
+    [1, 0, 0, 1, 1],
+    [1, 0, 0, 0, 1],
+    [1, 0, 0, 0, 1],
+    [1, 0, 0, 0, 1],
+  ],
+  U: [
+    [1, 0, 0, 0, 1],
+    [1, 0, 0, 0, 1],
+    [1, 0, 0, 0, 1],
+    [1, 0, 0, 0, 1],
+    [1, 0, 0, 0, 1],
+    [1, 0, 0, 0, 1],
+    [0, 1, 1, 1, 0],
+  ],
+  M: [
+    [1, 0, 0, 0, 1],
+    [1, 1, 0, 1, 1],
+    [1, 0, 1, 0, 1],
+    [1, 0, 0, 0, 1],
+    [1, 0, 0, 0, 1],
+    [1, 0, 0, 0, 1],
+    [1, 0, 0, 0, 1],
+  ],
+  R: [
+    [1, 1, 1, 1, 0],
+    [1, 0, 0, 0, 1],
+    [1, 0, 0, 0, 1],
+    [1, 1, 1, 1, 0],
+    [1, 0, 1, 0, 0],
+    [1, 0, 0, 1, 0],
+    [1, 0, 0, 0, 1],
+  ],
+  " ": [
+    [0, 0, 0],
+    [0, 0, 0],
+    [0, 0, 0],
+    [0, 0, 0],
+    [0, 0, 0],
+    [0, 0, 0],
+    [0, 0, 0],
+  ],
+};
+
+/* ─── Stamp text into a Set of "gx,gy" keys ─── */
+function stampText(
+  text: string,
+  startGX: number,
+  startGY: number,
+): Set<string> {
+  const set = new Set<string>();
+  let cx = startGX;
+  for (const ch of text) {
+    const glyph = FONT[ch];
+    if (!glyph) {
+      cx += 4;
+      continue;
+    }
+    for (let row = 0; row < glyph.length; row++) {
+      for (let col = 0; col < glyph[row].length; col++) {
+        if (glyph[row][col]) set.add(`${cx + col},${startGY + row}`);
+      }
+    }
+    cx += glyph[0].length + 1;
+  }
+  return set;
+}
+
+function textPixelWidth(text: string): number {
+  let w = 0;
+  for (const ch of text) {
+    const g = FONT[ch];
+    w += g ? g[0].length + 1 : 4;
+  }
+  return w - 1;
+}
+
+function placeK(gx: number, gy: number): Set<string> {
+  return stampText("K", gx, gy);
+}
+
+/* ─── Types ─── */
+interface BlockData {
+  gx: number;
+  gy: number;
+  x: number;
+  y: number;
+  isK1: boolean;
+  isK2: boolean;
+  isName: boolean;
+  baseShade: number;
+}
+
+type Phase = "explore" | "found1" | "vibrate" | "converge";
+
+/* ─── Component ─── */
+export default function EntryScreen({ onEnter }: { onEnter: () => void }) {
+  const gridRef = useRef<HTMLDivElement>(null);
+  const glowRef = useRef<HTMLDivElement>(null);
+  const phaseRef = useRef<Phase>("explore");
+  const [phase, _setPhase] = useState<Phase>("explore");
+  const [foundCount, setFoundCount] = useState(0);
+  const [showHint, setShowHint] = useState(true);
+
+  const setPhase = useCallback((p: Phase) => {
+    phaseRef.current = p;
+    _setPhase(p);
+  }, []);
+
+  const mouseRef = useRef({ x: -9999, y: -9999 });
+  const blocksRef = useRef<BlockData[]>([]);
+  const blockElsRef = useRef<HTMLDivElement[]>([]);
+  const layoutRef = useRef({
+    cols: 0,
+    rows: 0,
+    blockSize: 0,
+    step: 0,
+    offsetX: 0,
+    offsetY: 0,
+  });
+  const k1Ref = useRef<Set<string>>(new Set());
+  const k2Ref = useRef<Set<string>>(new Set());
+  const k1Found = useRef(false);
+  const k2Found = useRef(false);
+  const nameBlocksRef = useRef<Set<string>>(new Set());
+  const glowsRef = useRef<Float32Array>(new Float32Array(0));
+  const rafRef = useRef(0);
+  const vibrateTimerRef = useRef<{ pause: () => void } | null>(null);
+  const loaderRef = useRef<HTMLDivElement>(null);
+
+  /* ─── Build grid on mount ─── */
+  useEffect(() => {
+    const container = gridRef.current;
+    if (!container) return;
+
+    const W = window.innerWidth;
+    const H = window.innerHeight;
+    const blockSize = W < 600 ? 14 : W < 1024 ? 18 : 22;
+    const gap = W < 600 ? 2 : 3;
+    const step = blockSize + gap;
+    const cols = Math.floor(W / step);
+    const rows = Math.floor(H / step);
+    const oX = (W - cols * step + gap) / 2;
+    const oY = (H - rows * step + gap) / 2;
+
+    layoutRef.current = { cols, rows, blockSize, step, offsetX: oX, offsetY: oY };
+
+    /* Place two hidden Ks in left/right zones */
+    const margin = Math.min(6, Math.max(2, Math.floor(cols * 0.08)));
+    const kW = 5;
+    const kH = 7;
+    const zoneW = Math.max(1, Math.floor((cols - margin * 2 - kW) / 2));
+    const availH = Math.max(1, rows - margin * 2 - kH);
+
+    const k1gx = margin + Math.floor(Math.random() * zoneW);
+    const k1gy = margin + Math.floor(Math.random() * availH);
+    const k2gx = margin + zoneW + kW + Math.floor(Math.random() * zoneW);
+    const k2gy = margin + Math.floor(Math.random() * availH);
+
+    k1Ref.current = placeK(k1gx, k1gy);
+    k2Ref.current = placeK(k2gx, k2gy);
+
+    /* Pre-compute name blocks */
+    const line1 = "KALYAN";
+    const line2 = "KUMAR";
+    const w1 = textPixelWidth(line1);
+    const w2 = textPixelWidth(line2);
+    const nameStartY = Math.floor(rows / 2) - 8;
+    const s1 = stampText(line1, Math.floor((cols - w1) / 2), nameStartY);
+    const s2 = stampText(line2, Math.floor((cols - w2) / 2), nameStartY + 9);
+    nameBlocksRef.current = new Set([...s1, ...s2]);
+
+    /* Create DOM block elements */
+    const frag = document.createDocumentFragment();
+    const blocks: BlockData[] = [];
+    const els: HTMLDivElement[] = [];
+
+    for (let gy = 0; gy < rows; gy++) {
+      for (let gx = 0; gx < cols; gx++) {
+        const key = `${gx},${gy}`;
+        const el = document.createElement("div");
+        el.className = "entry__block";
+        el.style.left = `${oX + gx * step}px`;
+        el.style.top = `${oY + gy * step}px`;
+        el.style.width = `${blockSize}px`;
+        el.style.height = `${blockSize}px`;
+
+        blocks.push({
+          gx,
+          gy,
+          x: oX + gx * step,
+          y: oY + gy * step,
+          isK1: k1Ref.current.has(key),
+          isK2: k2Ref.current.has(key),
+          isName: nameBlocksRef.current.has(key),
+          baseShade: 0.03 + Math.random() * 0.04,
+        });
+
+        els.push(el);
+        frag.appendChild(el);
+      }
+    }
+
+    container.appendChild(frag);
+    blocksRef.current = blocks;
+    blockElsRef.current = els;
+    glowsRef.current = new Float32Array(blocks.length);
+
+    /* ── Entrance: blocks start invisible, glow loop reveals them on cursor ── */
+    for (const el of els) {
+      el.style.opacity = "0";
+    }
+
+    /* ── Pre-compute block centers into typed arrays for cache perf ── */
+    const N = blocks.length;
+    const centersX = new Float32Array(N);
+    const centersY = new Float32Array(N);
+    const half = blockSize / 2;
+    for (let i = 0; i < N; i++) {
+      centersX[i] = blocks[i].x + half;
+      centersY[i] = blocks[i].y + half;
+    }
+
+    /* ── Cursor-reactive glow loop (RAF) ── */
+    const RADIUS = 180;
+    const R2 = RADIUS * RADIUS;
+    const INV_R = 1 / RADIUS;
+    const entryPulseStart = new Float32Array(N);
+    const ENTRY_PULSE_DUR = 600;
+    let entryPrevMx = -9999;
+    let entryPrevMy = -9999;
+    let entryStoppedFrames = 0;
+    let entryWaveActive = false;
+    const ENTRY_WAVE_SPEED = 0.4;
+    let time = 0;
+    let lastTickX = -9999;
+    let lastTickY = -9999;
+    let lastTickTime = 0;
+    /* Track which blocks are currently "active" (opacity > 0) so we can
+       turn them off when cursor moves away without scanning everything. */
+    const activeSet = new Set<number>();
+
+    const glowLoop = () => {
+      if (phaseRef.current === "vibrate") {
+        rafRef.current = 0;
+        return;
+      }
+
+      time += 0.016;
+      const mx = mouseRef.current.x;
+      const my = mouseRef.current.y;
+      const glows = glowsRef.current;
+
+      /* ── Turn off blocks that left the radius last frame ── */
+      for (const idx of activeSet) {
+        const dx = centersX[idx] - mx;
+        const dy = centersY[idx] - my;
+        const d2 = dx * dx + dy * dy;
+        const b = blocks[idx];
+        const isFoundK =
+          (b.isK1 && k1Found.current) || (b.isK2 && k2Found.current);
+        if (d2 > R2 && !isFoundK) {
+          /* Fade out quickly */
+          const cur = glows[idx];
+          if (cur > 0.005) {
+            const next = cur * 0.6;
+            glows[idx] = next;
+            els[idx].style.opacity = String(next);
+          } else {
+            glows[idx] = 0;
+            els[idx].style.opacity = "0";
+            activeSet.delete(idx);
+          }
+        }
+      }
+
+      /* ── Fast grid-based spatial lookup: only visit blocks near cursor ── */
+      const gxCenter = Math.floor((mx - oX) / step);
+      const gyCenter = Math.floor((my - oY) / step);
+
+      /* ── Clock tick when cursor crosses grid cells ── */
+      const tickNow = performance.now();
+      if (
+        tickNow - lastTickTime > 80 &&
+        gxCenter >= 0 && gxCenter < cols &&
+        gyCenter >= 0 && gyCenter < rows
+      ) {
+        const tdx = mx - lastTickX;
+        const tdy = my - lastTickY;
+        if (tdx * tdx + tdy * tdy > step * step) {
+          playClockTick();
+          lastTickX = mx;
+          lastTickY = my;
+          lastTickTime = tickNow;
+        }
+      }
+
+      const cellRadius = Math.ceil(RADIUS / step) + 1;
+      const gxMin = Math.max(0, gxCenter - cellRadius);
+      const gxMax = Math.min(cols - 1, gxCenter + cellRadius);
+      const gyMin = Math.max(0, gyCenter - cellRadius);
+      const gyMax = Math.min(rows - 1, gyCenter + cellRadius);
+
+      for (let gy = gyMin; gy <= gyMax; gy++) {
+        for (let gx = gxMin; gx <= gxMax; gx++) {
+          const i = gy * cols + gx;
+          const dx = centersX[i] - mx;
+          const dy = centersY[i] - my;
+          const d2 = dx * dx + dy * dy;
+
+          let target: number;
+          if (d2 <= R2) {
+            const dist = Math.sqrt(d2);
+            const falloff = 1 - dist * INV_R;
+            target = falloff * falloff; /* quadratic falloff — bright center, soft edge */
+
+            /* K proximity hint */
+            const b = blocks[i];
+            if (
+              (b.isK1 && !k1Found.current) ||
+              (b.isK2 && !k2Found.current)
+            ) {
+              if (dist < 130) target = Math.max(target, falloff * 0.9);
+            }
+          } else {
+            target = 0;
+          }
+
+          /* Found K blocks stay lit */
+          const b = blocks[i];
+          if (
+            (b.isK1 && k1Found.current) ||
+            (b.isK2 && k2Found.current)
+          ) {
+            target = 0.85 + 0.15 * Math.sin(time * 2);
+          }
+
+          /* Snap-fast lerp toward target */
+          const cur = glows[i];
+          const next = cur + (target - cur) * 0.55;
+          glows[i] = next;
+
+          /* Only write to DOM if opacity actually changes visibly */
+          const rounded = next < 0.005 ? 0 : next;
+          els[i].style.opacity = String(rounded);
+
+          if (rounded > 0) activeSet.add(i);
+          else activeSet.delete(i);
+        }
+      }
+
+      /* ── Found-K breathing for blocks outside the cursor scan rect ── */
+      if (k1Found.current || k2Found.current) {
+        const breathe = 0.85 + 0.15 * Math.sin(time * 2);
+        for (let i = 0; i < N; i++) {
+          const b = blocks[i];
+          if (
+            (b.isK1 && k1Found.current) ||
+            (b.isK2 && k2Found.current)
+          ) {
+            /* May already be handled above, but ensure even out-of-rect K blocks glow */
+            if (!activeSet.has(i) || glows[i] < breathe) {
+              glows[i] = breathe;
+              els[i].style.opacity = String(breathe);
+              activeSet.add(i);
+            }
+          }
+        }
+      }
+
+      /* Update cursor glow overlay */
+      if (glowRef.current) {
+        glowRef.current.style.background = `radial-gradient(circle 200px at ${mx}px ${my}px, rgba(255,255,255,0.04), transparent 70%)`;
+      }
+
+      /* ── Directional wave pulse ── */
+      {
+        const velX = mx - entryPrevMx;
+        const velY = my - entryPrevMy;
+        const speed = Math.sqrt(velX * velX + velY * velY);
+
+        if (speed > 3) {
+          entryStoppedFrames = 0;
+          entryWaveActive = true;
+          const dirX = velX / speed;
+          const dirY = velY / speed;
+          const now = performance.now();
+
+          for (let i = 0; i < N; i++) {
+            const toX = centersX[i] - mx;
+            const toY = centersY[i] - my;
+            const proj = toX * dirX + toY * dirY;
+            if (proj > 0 && proj < 1200) {
+              const perp = Math.abs(toX * (-dirY) + toY * dirX);
+              if (perp < RADIUS * 1.5) {
+                if (entryPulseStart[i] > 0) {
+                  const el = now - entryPulseStart[i];
+                  if (el >= 0 && el < ENTRY_PULSE_DUR) continue;
+                }
+                entryPulseStart[i] = now + proj / ENTRY_WAVE_SPEED;
+              }
+            }
+          }
+        } else {
+          entryStoppedFrames++;
+          if (entryStoppedFrames > 10) entryWaveActive = false;
+        }
+        entryPrevMx = mx;
+        entryPrevMy = my;
+      }
+
+      /* Apply pulse scale to DOM dots */
+      {
+        const pNow = performance.now();
+        for (let i = 0; i < N; i++) {
+          if (entryPulseStart[i] > 0) {
+            const pEl = pNow - entryPulseStart[i];
+            if (pEl >= 0 && pEl < ENTRY_PULSE_DUR) {
+              const s = 1 + 0.3 * Math.sin((pEl / ENTRY_PULSE_DUR) * Math.PI);
+              els[i].style.transform = `scale(${s})`;
+            } else if (pEl >= ENTRY_PULSE_DUR) {
+              entryPulseStart[i] = 0;
+              els[i].style.transform = "";
+            }
+          }
+        }
+      }
+
+      rafRef.current = requestAnimationFrame(glowLoop);
+    };
+
+    const glowDelay = setTimeout(() => {
+      rafRef.current = requestAnimationFrame(glowLoop);
+    }, 200);
+
+    const hintTimer = setTimeout(() => setShowHint(false), 5000);
+
+    return () => {
+      cancelAnimationFrame(rafRef.current);
+      clearTimeout(glowDelay);
+      clearTimeout(hintTimer);
+      vibrateTimerRef.current?.pause();
+      container.innerHTML = "";
+    };
+  }, []); // eslint-disable-line react-hooks/exhaustive-deps
+
+  /* ─── Mouse / touch tracking and Audio Unlock ─── */
+  useEffect(() => {
+    /* Browsers strictly require a user gesture (click/tap/key) to unlock audio. 
+       mousemove is ignored by Autoplay policies. */
+    const unlockAudio = () => {
+      initAudio();
+      window.removeEventListener("pointerdown", unlockAudio);
+      window.removeEventListener("keydown", unlockAudio);
+      window.removeEventListener("click", unlockAudio);
+    };
+    window.addEventListener("pointerdown", unlockAudio, { once: true });
+    window.addEventListener("keydown", unlockAudio, { once: true });
+    window.addEventListener("click", unlockAudio, { once: true });
+
+    const handleMouse = (e: MouseEvent) => {
+      mouseRef.current = { x: e.clientX, y: e.clientY };
+    };
+    const handleTouch = (e: TouchEvent) => {
+      const t = e.touches[0];
+      if (t) {
+        mouseRef.current = { x: t.clientX, y: t.clientY };
+      }
+    };
+    window.addEventListener("mousemove", handleMouse);
+    window.addEventListener("touchmove", handleTouch, { passive: true });
+    window.addEventListener("touchstart", handleTouch, { passive: true });
+
+    /* Escape key bypass — skip to particle canvas */
+    const handleKey = (e: KeyboardEvent) => {
+      if (e.key === "Escape") {
+        onEnter();
+      }
+    };
+    window.addEventListener("keydown", handleKey);
+
+    return () => {
+      window.removeEventListener("pointerdown", unlockAudio);
+      window.removeEventListener("keydown", unlockAudio);
+      window.removeEventListener("click", unlockAudio);
+      window.removeEventListener("mousemove", handleMouse);
+      window.removeEventListener("touchmove", handleTouch);
+      window.removeEventListener("touchstart", handleTouch);
+      window.removeEventListener("keydown", handleKey);
+    };
+  }, [onEnter]);
+
+  /* ─── Cinematic Vibrate → Inhale → Burst sequence ─── */
+  const startVibrateBurst = useCallback(() => {
+    cancelAnimationFrame(rafRef.current);
+    rafRef.current = 0;
+    if (glowRef.current) glowRef.current.style.background = "none";
+
+    const els = blockElsRef.current;
+    const blocks = blocksRef.current;
+    const { cols, rows, blockSize, step } = layoutRef.current;
+    const N = els.length;
+    const W = window.innerWidth;
+    const H = window.innerHeight;
+    const cX = W / 2;
+    const cY = H / 2;
+    const half = blockSize / 2;
+
+    /* Pre-compute distance from center for each block */
+    const dists = new Float32Array(N);
+    let maxDist = 0;
+    for (let i = 0; i < N; i++) {
+      const dx = blocks[i].x + half - cX;
+      const dy = blocks[i].y + half - cY;
+      dists[i] = Math.sqrt(dx * dx + dy * dy);
+      if (dists[i] > maxDist) maxDist = dists[i];
+    }
+    const invMaxDist = 1 / (maxDist || 1);
+
+    /* Create the white flash overlay for detonation */
+    const flash = document.createElement("div");
+    flash.style.cssText =
+      "position:fixed;inset:0;background:#fff;opacity:0;z-index:200;pointer-events:none;";
+    document.body.appendChild(flash);
+
+    /* Container ref for screen-shake */
+    const container = gridRef.current!.parentElement!;
+    let shakeRAF = 0;
+
+    /*
+     * PHASE 1 — WAVE TREMOR (0 → 2.2s)
+     * Soft vibration radiates outward from center in sine waves.
+     * Intensity ramps gently. Brightness reveals blocks gradually
+     * from the center outward like ripples in water.
+     */
+    const PHASE1_DUR = 2200;
+
+    /*
+     * PHASE 2 — PRESSURE BUILD (2.2s → 3.8s)
+     * Exponential intensity ramp. Blocks converge slightly toward center.
+     * Random white flashes increase in frequency.
+     * LED strips and corners already flashing via CSS.
+     */
+    const PHASE2_DUR = 1600;
+
+    /*
+     * PHASE 3 — THE INHALE (3.8s → 4.3s)
+     * All blocks contract sharply toward center, screen dims briefly.
+     * Creates the "breath before the scream" moment.
+     */
+    const INHALE_DUR = 500;
+
+    const TOTAL_BUILD = PHASE1_DUR + PHASE2_DUR + INHALE_DUR;
+    let startTime = 0;
+
+    const buildLoop = (now: number) => {
+      if (!startTime) startTime = now;
+      const elapsed = now - startTime;
+
+      if (elapsed < PHASE1_DUR) {
+        /* ── Phase 1: Wave tremor ── */
+        const p = elapsed / PHASE1_DUR; // 0→1
+        const waveSpeed = 0.004 + p * 0.008;
+        const intensity = 0.3 + Math.pow(p, 1.8) * 3.5;
+
+        for (let i = 0; i < N; i++) {
+          const nd = dists[i] * invMaxDist; // 0=center, 1=edge
+          const wave = Math.sin(dists[i] * 0.015 - elapsed * waveSpeed);
+          const jitter = wave * intensity * (0.4 + nd * 0.6);
+          const jx = jitter * (Math.random() > 0.5 ? 1 : -1);
+          const jy = jitter * (Math.random() > 0.5 ? 1 : -1);
+          els[i].style.transform = `translate3d(${jx.toFixed(2)}px, ${jy.toFixed(2)}px, 0)`;
+
+          /* Reveal from center outward */
+          const reveal = Math.max(0, Math.min(1, (p * 1.4 - nd * 0.8)));
+          const opc = reveal * (0.08 + p * 0.25);
+          els[i].style.opacity = String(opc);
+        }
+      } else if (elapsed < PHASE1_DUR + PHASE2_DUR) {
+        /* ── Phase 2: Pressure build ── */
+        const local = (elapsed - PHASE1_DUR) / PHASE2_DUR; // 0→1
+        const intensity = 4 + Math.pow(local, 2.5) * 18;
+        const pulse = 1 + 0.3 * Math.sin(local * Math.PI * 16);
+        const breathe = 1 + 0.08 * Math.sin(local * Math.PI * 6);
+        const finalIntensity = intensity * pulse;
+
+        for (let i = 0; i < N; i++) {
+          const nd = dists[i] * invMaxDist;
+          /* Wave pattern still present but overtaken by chaos */
+          const wave = Math.sin(dists[i] * 0.02 - elapsed * 0.012);
+          const chaos = (Math.random() - 0.5) * finalIntensity;
+          const jx = (wave * 2 + chaos) * breathe;
+          const jy = ((Math.random() - 0.5) * finalIntensity + wave * 1.5) * breathe;
+
+          /* Slight convergence toward center as pressure builds */
+          const converge = Math.pow(local, 3) * 0.06;
+          const towardCX = (cX - (blocks[i].x + half)) * converge;
+          const towardCY = (cY - (blocks[i].y + half)) * converge;
+
+          els[i].style.transform = `translate3d(${(jx + towardCX).toFixed(1)}px, ${(jy + towardCY).toFixed(1)}px, 0)`;
+
+          /* Brightness ramps; near-center blocks brighten first */
+          let opc = 0.3 + Math.pow(local, 1.5) * 0.7 * (1 - nd * 0.3);
+          /* Random flash bursts — increase in frequency */
+          if (Math.random() < Math.pow(local, 2) * 0.12) opc = 1;
+          els[i].style.opacity = String(Math.min(1, opc));
+        }
+
+        /* Subtle screen-shake on container */
+        const shake = Math.pow(local, 3) * 3;
+        container.style.transform = `translate(${(Math.random() - 0.5) * shake}px, ${(Math.random() - 0.5) * shake}px)`;
+
+      } else if (elapsed < TOTAL_BUILD) {
+        /* ── Phase 3: THE INHALE — sharp contraction toward center ── */
+        const local = (elapsed - PHASE1_DUR - PHASE2_DUR) / INHALE_DUR; // 0→1
+        const contractStrength = Math.pow(local, 0.6); // fast start, decelerates
+        const dimming = 1 - local * 0.4; // screen dims slightly
+
+        for (let i = 0; i < N; i++) {
+          const nd = dists[i] * invMaxDist;
+          /* Contract toward center */
+          const towardCX = (cX - (blocks[i].x + half)) * contractStrength * 0.35;
+          const towardCY = (cY - (blocks[i].y + half)) * contractStrength * 0.35;
+          /* Tiny residual vibration */
+          const residual = (1 - local) * 2;
+          const jx = (Math.random() - 0.5) * residual;
+          const jy = (Math.random() - 0.5) * residual;
+
+          els[i].style.transform = `translate3d(${(towardCX + jx).toFixed(1)}px, ${(towardCY + jy).toFixed(1)}px, 0)`;
+
+          /* Blocks dim except center which stays bright */
+          const opc = (1 - nd * 0.5) * dimming + nd * 0.1;
+          els[i].style.opacity = String(Math.max(0.05, opc));
+          /* Shrink slightly during inhale */
+          const sc = 1 - contractStrength * 0.15 * nd;
+          els[i].style.transform += ` scale(${sc.toFixed(3)})`;
+        }
+
+        /* Screen shake subsides */
+        const shake = (1 - local) * 2;
+        container.style.transform = `translate(${(Math.random() - 0.5) * shake}px, ${(Math.random() - 0.5) * shake}px)`;
+      }
+
+      if (elapsed < TOTAL_BUILD) {
+        shakeRAF = requestAnimationFrame(buildLoop);
+      } else {
+        /* ── PHASE 4: MOTH TO FLAME — particles converge to center ── */
+        container.style.transform = "";
+        setPhase("converge");
+
+        /* Show loader */
+        if (loaderRef.current) {
+          loaderRef.current.style.display = "";
+          loaderRef.current.textContent = "0%";
+        }
+
+        /* Subtle flash at convergence start */
+        flash.style.opacity = "0.25";
+        flash.style.transition = "opacity 500ms ease-out";
+        requestAnimationFrame(() => { flash.style.opacity = "0"; });
+
+        /* Pre-compute per-particle convergence data */
+        interface ConvergeParam {
+          delay: number;
+          duration: number;
+          startX: number;
+          startY: number;
+          ctrlX: number;
+          ctrlY: number;
+        }
+        const convergeParams: ConvergeParam[] = [];
+
+        for (let i = 0; i < N; i++) {
+          const nd = dists[i] * invMaxDist;
+          const b = blocks[i];
+          /* Visual position after inhale contraction */
+          const sx = b.x * 0.65 + (cX - half) * 0.35;
+          const sy = b.y * 0.65 + (cY - half) * 0.35;
+
+          /* Edge particles start first (moths from afar) */
+          const delay = (1 - nd) * 1000;
+          const duration = 800 + nd * 1800;
+
+          /* Bezier control point — perpendicular offset for curved path */
+          const dx = cX - sx;
+          const dy = cY - sy;
+          const d = Math.sqrt(dx * dx + dy * dy) || 1;
+          const perpX = -dy / d;
+          const perpY = dx / d;
+          const curveAmt = (Math.random() - 0.5) * d * 0.5;
+          const mx = (sx + cX) / 2 + perpX * curveAmt;
+          const my = (sy + cY) / 2 + perpY * curveAmt;
+
+          convergeParams.push({ delay, duration, startX: sx, startY: sy, ctrlX: mx, ctrlY: my });
+        }
+
+        let convStart = 0;
+        let arrivedCount = 0;
+
+        const convergeLoop = (now: number) => {
+          if (!convStart) convStart = now;
+          const elapsed2 = now - convStart;
+          arrivedCount = 0;
+
+          for (let i = 0; i < N; i++) {
+            const cp = convergeParams[i];
+            const local2 = elapsed2 - cp.delay;
+
+            if (local2 < 0) {
+              /* Hasn't started — residual tremor */
+              const jx = (Math.random() - 0.5) * 1.2;
+              const jy = (Math.random() - 0.5) * 1.2;
+              els[i].style.transform = `translate3d(${jx}px, ${jy}px, 0)`;
+              els[i].style.opacity = String(0.4 + Math.random() * 0.2);
+              continue;
+            }
+
+            const t2 = Math.min(1, local2 / cp.duration);
+            /* easeInCubic — accelerates toward center (gravity pull) */
+            const e2 = t2 * t2 * t2;
+
+            /* Quadratic bezier path */
+            const u2 = 1 - e2;
+            const wx = u2 * u2 * cp.startX + 2 * u2 * e2 * cp.ctrlX + e2 * e2 * cX;
+            const wy = u2 * u2 * cp.startY + 2 * u2 * e2 * cp.ctrlY + e2 * e2 * cY;
+
+            const translateX = wx - blocks[i].x;
+            const translateY = wy - blocks[i].y;
+
+            /* Scale: slight growth → shrink to near-zero */
+            const scale2 = t2 < 0.3
+              ? 1 + t2 * 0.6
+              : Math.max(0.05, 1.18 - (t2 - 0.3) * 1.6);
+
+            /* Opacity: bright during flight, fades near end */
+            const opc2 = t2 < 0.85 ? 0.9 : 0.9 * (1 - (t2 - 0.85) / 0.15);
+
+            els[i].style.transform = `translate3d(${translateX.toFixed(1)}px, ${translateY.toFixed(1)}px, 0) scale(${scale2.toFixed(3)})`;
+            els[i].style.opacity = t2 >= 1 ? "0" : String(opc2.toFixed(3));
+
+            if (t2 >= 1) arrivedCount++;
+          }
+
+          /* Update loading counter */
+          const pct = Math.min(100, Math.round((arrivedCount / N) * 100));
+          if (loaderRef.current) {
+            loaderRef.current.textContent = `${pct}%`;
+          }
+
+          if (arrivedCount >= N) {
+            /* All particles arrived — soft fade-out for seamless handoff */
+            if (loaderRef.current) {
+              loaderRef.current.style.transition = "opacity 200ms ease-out";
+              loaderRef.current.style.opacity = "0";
+            }
+
+            /* Brief subtle pulse at center then fade the entire entry screen */
+            flash.style.opacity = "0.15";
+            flash.style.transition = "opacity 400ms ease-out";
+            requestAnimationFrame(() => { flash.style.opacity = "0"; });
+
+            /* Fade out the entry section container */
+            const entrySection = container.closest(".entry") as HTMLElement;
+            if (entrySection) {
+              entrySection.style.transition = "opacity 350ms ease-out";
+              entrySection.style.opacity = "0";
+            }
+
+            setTimeout(() => {
+              flash.remove();
+              onEnter();
+            }, 380);
+            return;
+          }
+
+          shakeRAF = requestAnimationFrame(convergeLoop);
+        };
+
+        shakeRAF = requestAnimationFrame(convergeLoop);
+      }
+    };
+
+    shakeRAF = requestAnimationFrame(buildLoop);
+
+    /* Store a pause-able handle */
+    vibrateTimerRef.current = {
+      pause: () => {
+        cancelAnimationFrame(shakeRAF);
+        flash.remove();
+        container.style.transform = "";
+      },
+    };
+  }, [onEnter]);
+
+  /* ─── Click handler ─── */
+  const handleClick = useCallback(
+    (e: React.MouseEvent) => {
+      const current = phaseRef.current;
+      if (current !== "explore" && current !== "found1") return;
+
+      const { step, offsetX, offsetY } = layoutRef.current;
+      const clickGX = Math.floor((e.clientX - offsetX) / step);
+      const clickGY = Math.floor((e.clientY - offsetY) / step);
+
+      /* ±1 block tolerance around click */
+      let hitK1 = false;
+      let hitK2 = false;
+      for (let dy = -1; dy <= 1; dy++) {
+        for (let dx = -1; dx <= 1; dx++) {
+          const key = `${clickGX + dx},${clickGY + dy}`;
+          if (k1Ref.current.has(key) && !k1Found.current) hitK1 = true;
+          if (k2Ref.current.has(key) && !k2Found.current) hitK2 = true;
+        }
+      }
+
+      const revealK = (isK1: boolean) => {
+        const kSet = isK1 ? k1Ref.current : k2Ref.current;
+        const kEls: HTMLDivElement[] = [];
+        blockElsRef.current.forEach((el, i) => {
+          const b = blocksRef.current[i];
+          if (kSet.has(`${b.gx},${b.gy}`)) {
+            kEls.push(el);
+            el.style.opacity = "1";
+          }
+        });
+
+        /* Pop-out with elastic easing */
+        anime({
+          targets: kEls,
+          scale: [1, 1.35, 1.08],
+          z: [0, 18, 6],
+          duration: 700,
+          ease: "outElastic(1, .5)",
+        });
+      };
+
+      if (hitK1) {
+        k1Found.current = true;
+        revealK(true);
+        const n = k2Found.current ? 2 : 1;
+        setFoundCount(n);
+        if (n === 1) {
+          setPhase("found1");
+          setShowHint(false);
+        }
+        if (n === 2) {
+          setPhase("vibrate");
+          startVibrateBurst();
+        }
+      } else if (hitK2) {
+        k2Found.current = true;
+        revealK(false);
+        const n = k1Found.current ? 2 : 1;
+        setFoundCount(n);
+        if (n === 1) {
+          setPhase("found1");
+          setShowHint(false);
+        }
+        if (n === 2) {
+          setPhase("vibrate");
+          startVibrateBurst();
+        }
+      }
+    },
+    [setPhase, startVibrateBurst],
+  );
+
+  return (
+    <section
+      className={`entry${phase === "vibrate" ? " phase-vibrate" : ""}${phase === "converge" ? " phase-converge" : ""}`}
+      onClick={handleClick}
+    >
+      {/* Block grid */}
+      <div ref={gridRef} className="entry__grid" />
+
+      {/* Loading counter (convergence phase) */}
+      <div ref={loaderRef} className="entry__loader" style={{ display: 'none' }}>0%</div>
+
+      {/* Cursor ambient glow overlay */}
+      <div ref={glowRef} className="entry__cursor-glow" />
+
+      {/* UI overlay */}
+      <div className="entry__overlay">
+        {showHint && phase === "explore" && (
+          <div className="entry__hint">
+            <span className="entry__hint-icon">&#x2316;</span>
+            <span className="entry__hint-text">
+              find the hidden K&apos;s; Only curious minds will find them
+            </span>
+          </div>
+        )}
+
+        {(phase === "explore" || phase === "found1") && (
+          <div className="entry__found">
+            <span
+              className={`entry__found-dot ${foundCount >= 1 ? "lit" : ""}`}
+            />
+            <span
+              className={`entry__found-dot ${foundCount >= 2 ? "lit" : ""}`}
+            />
+          </div>
+        )}
+
+        <div className="entry__coord">47.3769&deg; N, 8.5417&deg; E</div>
+        <div className="entry__version">v0.0.1</div>
+      </div>
+
+      {/* LED strip accents */}
+      <div className="entry__led entry__led--top" />
+      <div className="entry__led entry__led--bottom" />
+      <div className="entry__led entry__led--left" />
+      <div className="entry__led entry__led--right" />
+
+      {/* Glyph corner marks */}
+      <div className="entry__glyph-corner entry__glyph-corner--tl" />
+      <div className="entry__glyph-corner entry__glyph-corner--tr" />
+      <div className="entry__glyph-corner entry__glyph-corner--bl" />
+      <div className="entry__glyph-corner entry__glyph-corner--br" />
+    </section>
+  );
+}
+
+```
+
+### File: app/components/ParticleCanvas.tsx
+```tsx
+"use client";
+
+import { useRef, useEffect } from "react";
+import anime from "animejs";
+import "./particle-canvas.css";
+import { stampLines, stampTextScaledCenters, textPixelWidthScaled } from "./pixel-font";
+import { playClockTick, initAudio } from "./clock-tick";
+
+/* ═══════════════════════════════════════
+   Section data — full resume content.
+   Hero uses scaled stamping (big letters).
+   Other sections use normal 4px grid text.
+   ═══════════════════════════════════════ */
+interface DisplaySection {
+  label: string;
+  lines: string[];
+  lineStep: number;
+}
+
+const SECTIONS: DisplaySection[] = [
+  {
+    label: "00 // hero",
+    lineStep: 0, /* unused — hero uses stampLinesScaled */
+    lines: ["KALYAN", "KUMAR"],
+  },
+];
+
+const TOTAL = SECTIONS.length;
+
+/* ═══════════════════════════════════════
+   Easing
+   ═══════════════════════════════════════ */
+function easeInOutCubic(t: number): number {
+  return t < 0.5 ? 4 * t * t * t : 1 - Math.pow(-2 * t + 2, 3) / 2;
+}
+
+/* ═══════════════════════════════════════
+   Particle type
+   ═══════════════════════════════════════ */
+interface SectionTarget {
+  x: number;
+  y: number;
+  isText: boolean;
+}
+
+interface Particle {
+  x: number;
+  y: number;
+  opacity: number;
+  targets: SectionTarget[];
+}
+
+/* ═══════════════════════════════════════
+   Component
+   ═══════════════════════════════════════ */
+export default function ParticleCanvas() {
+  const canvasRef = useRef<HTMLCanvasElement>(null);
+  const rafRef = useRef(0);
+  const indicatorRef = useRef<HTMLDivElement>(null);
+  const heroOverlayRef = useRef<HTMLDivElement>(null);
+  const bottomBarRef = useRef<HTMLDivElement>(null);
+  const navRef = useRef<HTMLElement>(null);
+  const heroDotsContainerRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    const canvas = canvasRef.current;
+    if (!canvas) return;
+
+    const ctx = canvas.getContext("2d")!;
+    const dpr = Math.min(window.devicePixelRatio || 1, 2);
+    const W = window.innerWidth;
+    const H = window.innerHeight;
+
+    canvas.width = W * dpr;
+    canvas.height = H * dpr;
+    canvas.style.width = `${W}px`;
+    canvas.style.height = `${H}px`;
+    ctx.scale(dpr, dpr);
+
+    const cX = W / 2;
+    const cY = H / 2;
+
+    /* ── Grid sizing ── */
+    const blockSize = W < 600 ? 3 : W < 1024 ? 3 : 4;
+    const gap = 1;
+    const step = blockSize + gap;
+    const cols = Math.floor(W / step);
+    const rows = Math.floor(H / step);
+    const oX = (W - cols * step + gap) / 2;
+    const oY = (H - rows * step + gap) / 2;
+    const N = cols * rows;
+    const halfBlock = blockSize / 2;
+
+    /* ── Hero scale — big letters that fill the viewport ── */
+    const heroScale = W < 600 ? 3 : W < 1024 ? 4 : 6;
+    const heroGridHalf = Math.floor(heroScale / 2);
+
+    /* ── Pre-render circle sprite (small — for normal sections) ── */
+    const spriteSize = blockSize + 2;
+    const dotSprite = document.createElement("canvas");
+    dotSprite.width = spriteSize * dpr;
+    dotSprite.height = spriteSize * dpr;
+    const dctx = dotSprite.getContext("2d")!;
+    dctx.scale(dpr, dpr);
+    dctx.fillStyle = "#ffffff";
+    dctx.beginPath();
+    dctx.arc(spriteSize / 2, spriteSize / 2, halfBlock, 0, Math.PI * 2);
+    dctx.fill();
+
+    /* ── Pre-render LARGE circle sprite (matches entry screen solid dots) ── */
+    const entryBlockSize = W < 600 ? 14 : W < 1024 ? 18 : 22;
+    const heroDotDiam = entryBlockSize;
+    const heroSpriteSize = heroDotDiam + 2;
+    const heroDotSprite = document.createElement("canvas");
+    heroDotSprite.width = heroSpriteSize * dpr;
+    heroDotSprite.height = heroSpriteSize * dpr;
+    const hdctx = heroDotSprite.getContext("2d")!;
+    hdctx.scale(dpr, dpr);
+    hdctx.fillStyle = "#ffffff";
+    hdctx.beginPath();
+    hdctx.arc(heroSpriteSize / 2, heroSpriteSize / 2, heroDotDiam / 2, 0, Math.PI * 2);
+    hdctx.fill();
+
+    /* Enable scrolling */
+    document.body.style.overflow = "auto";
+    document.body.style.overflowX = "hidden";
+    document.body.style.height = `${200}vh`;
+
+    /* ── Stamp pixel-art text for each section ── */
+    /* Hero: "KALYAN" above center, "KUMAR" below center,
+       with a gap in the middle for the bio overlay. */
+    const charH = 7 * heroScale; /* height of one line in grid cells */
+    /* Snap the gap to heroScale so KUMAR dots land on the same grid as KALYAN */
+    const bioGapRows = Math.round(Math.round(rows * 0.28) / heroScale) * heroScale;
+    const totalTextH = charH * 2 + bioGapRows;
+    const startYTop = Math.max(0, Math.round(((rows - totalTextH) / 2) / heroScale) * heroScale);
+    const startYBot = startYTop + charH + bioGapRows;
+
+    const kalyanW = textPixelWidthScaled("KALYAN", heroScale);
+    const kumarW = textPixelWidthScaled("KUMAR", heroScale);
+    const kalyanX = Math.max(0, Math.round(((cols - kalyanW) / 2) / heroScale) * heroScale);
+    const kumarX = Math.max(0, Math.round(((cols - kumarW) / 2) / heroScale) * heroScale);
+
+    const heroStampSet = new Set<string>();
+    stampTextScaledCenters("KALYAN", kalyanX, startYTop, heroScale)
+      .forEach((k) => heroStampSet.add(k));
+    stampTextScaledCenters("KUMAR", kumarX, startYBot, heroScale)
+      .forEach((k) => heroStampSet.add(k));
+
+    /* ── Create DOM elements for hero text dots (for anime.js 3D pop) ── */
+    const heroDotsContainer = heroDotsContainerRef.current;
+    const heroDotEls: HTMLDivElement[] = [];
+    const heroDotIndices: number[] = [];       /* grid index → particle index */
+    const heroDotRevealed: boolean[] = [];     /* track first-reveal per dot */
+    if (heroDotsContainer) {
+      heroDotsContainer.innerHTML = "";
+      heroDotsContainer.style.perspective = "800px";
+      heroDotsContainer.style.transformStyle = "preserve-3d";
+      heroStampSet.forEach((key) => {
+        const [gxS, gyS] = key.split(",");
+        const gx = Number(gxS);
+        const gy = Number(gyS);
+        const idx = gy * cols + gx;
+        const px = oX + gx * step + halfBlock;
+        const py = oY + gy * step + halfBlock;
+        const el = document.createElement("div");
+        el.style.cssText = `
+          position:absolute;
+          left:${px - entryBlockSize * 0.65}px;
+          top:${py - entryBlockSize * 0.65}px;
+          width:${entryBlockSize * 1.3}px;
+          height:${entryBlockSize * 1.3}px;
+          border-radius:50%;
+          background:#fff;
+          box-shadow:0 0 6px 2px rgba(255,255,255,0.3);
+          opacity:0;
+          will-change:transform,opacity;
+          transform-style:preserve-3d;
+          pointer-events:none;
+        `;
+        heroDotsContainer.appendChild(el);
+        heroDotEls.push(el);
+        heroDotIndices.push(idx);
+        heroDotRevealed.push(false);
+      });
+    }
+
+    const sectionStamps: Set<string>[] = SECTIONS.map((sec, idx) => {
+      if (idx === 0) return heroStampSet;
+      return stampLines(sec.lines, cols, rows, sec.lineStep);
+    });
+
+    /* Build a fast lookup: which particle indices are hero center dots */
+    const isHeroCenterDot = new Uint8Array(N);
+    /* Which particles sit on the hero grid (matching entry screen density). */
+    const isHeroGridDot = new Uint8Array(N);
+
+    /* ── Build targets for each section ── */
+    const allTargets: SectionTarget[][] = sectionStamps.map((stamp, secIdx) => {
+      const targets: SectionTarget[] = [];
+      for (let gy = 0; gy < rows; gy++) {
+        for (let gx = 0; gx < cols; gx++) {
+          const idx = gy * cols + gx;
+          const isText = stamp.has(`${gx},${gy}`);
+          if (secIdx === 0 && isText) {
+            isHeroCenterDot[idx] = 1;
+          }
+          /* Mark cells on the hero grid (same grid as text dots). */
+          if (secIdx === 0 && !isText
+              && (gx % heroScale === heroGridHalf)
+              && (gy % heroScale === heroGridHalf)) {
+            isHeroGridDot[idx] = 1;
+          }
+          targets.push({
+            x: oX + gx * step + halfBlock,
+            y: oY + gy * step + halfBlock,
+            isText,
+          });
+        }
+      }
+      return targets;
+    });
+
+    /* ── Create particles at their hero target positions ── */
+    const particles: Particle[] = [];
+    for (let i = 0; i < N; i++) {
+      const heroTarget = allTargets[0][i];
+      particles.push({
+        x: heroTarget.x,
+        y: heroTarget.y,
+        opacity: 0,
+        targets: allTargets.map((st) => st[i]),
+      });
+    }
+
+    /* ── Animation state ── */
+    let lastScrollY = 0;
+    let scrollVelocity = 0;
+    let time = 0;
+    let currentLabel = SECTIONS[0].label;
+
+    /* ── Flashlight glow state — cursor-proximity reveal ── */
+    const glows = new Float32Array(N); /* 0 = invisible, 1 = fully lit */
+    const pulseStart = new Float32Array(N);
+    const PULSE_DUR = 600;
+    let pcPrevMx = -9999;
+    let pcPrevMy = -9999;
+    let pcWaveActive = false;
+    let pcStoppedFrames = 0;
+    const PC_WAVE_SPEED = 0.4;
+    const FLASH_RADIUS = 180;
+    const FLASH_R2 = FLASH_RADIUS * FLASH_RADIUS;
+    const FLASH_INV_R = 1 / FLASH_RADIUS;
+
+    /* (anime.js handles the elastic pop on DOM dots) */
+
+    /* ── Mouse tracking for cursor-vicinity clock tick ── */
+    const soundMouse = { x: -9999, y: -9999 };
+    let lastSndX = -9999;
+    let lastSndY = -9999;
+    let lastSndTime = 0;
+    const SND_DIST_SQ = 18 * 18;
+    const heroStamp = sectionStamps[0];
+
+    const onMouseForSound = (e: MouseEvent) => {
+      soundMouse.x = e.clientX;
+      soundMouse.y = e.clientY;
+    };
+    const onTouchForSound = (e: TouchEvent) => {
+      const tc = e.touches[0];
+      if (tc) {
+        soundMouse.x = tc.clientX;
+        soundMouse.y = tc.clientY;
+      }
+    };
+    const initClickForSound = () => {
+      initAudio();
+      window.removeEventListener("click", initClickForSound);
+      window.removeEventListener("touchstart", initClickForSound);
+    };
+    window.addEventListener("mousemove", onMouseForSound);
+    window.addEventListener("touchmove", onTouchForSound, { passive: true });
+    window.addEventListener("click", initClickForSound);
+    window.addEventListener("touchstart", initClickForSound);
+
+    const dotEls =
+      indicatorRef.current?.querySelectorAll<HTMLDivElement>(".pc-dot");
+
+    /* ── RAF loop ── */
+    const halfSprite = spriteSize / 2;
+
+    const tick = (now: number) => {
+      time = now * 0.001;
+
+      const scrollY = window.scrollY;
+      scrollVelocity =
+        scrollVelocity * 0.85 + Math.abs(scrollY - lastScrollY) * 0.15;
+      lastScrollY = scrollY;
+
+      const progress = scrollY / H;
+      const sectionA = Math.min(Math.floor(progress), TOTAL - 1);
+      const sectionB = Math.min(sectionA + 1, TOTAL - 1);
+      const t =
+        sectionA === sectionB ? 0 : Math.min(1, progress - sectionA);
+      const eased = easeInOutCubic(t);
+      const activeSec = t > 0.5 ? sectionB : sectionA;
+
+      const chaos =
+        Math.sin(t * Math.PI) * Math.min(scrollVelocity * 0.4, 25);
+
+      /* ── Is hero settled? (for static dots) ── */
+      const isHeroSettled = activeSec === 0 && t < 0.01;
+      const isOnHero = activeSec === 0;
+      const isConverging = progress > 0.01 && progress < 0.6;
+
+      /* ── Flashlight: cursor-proximity glow for hero section ── */
+      if (isOnHero) {
+        const mx = soundMouse.x;
+        const my = soundMouse.y;
+
+        /* Grid cell at cursor */
+        const gxC = Math.floor((mx - oX) / step);
+        const gyC = Math.floor((my - oY) / step);
+        const cellRad = Math.ceil(FLASH_RADIUS / step) + 1;
+        const gxMin = Math.max(0, gxC - cellRad);
+        const gxMax = Math.min(cols - 1, gxC + cellRad);
+        const gyMin = Math.max(0, gyC - cellRad);
+        const gyMax = Math.min(rows - 1, gyC + cellRad);
+
+        /* All dots invisible by default — only visible near cursor.
+           Fast decay (0.6) matches entry screen behavior. */
+        for (let i = 0; i < N; i++) {
+          if (glows[i] > 0.005) {
+            glows[i] *= isConverging ? 0.3 : 0.6; /* Decay much faster while converging */
+          } else {
+            glows[i] = 0;
+          }
+        }
+
+        /* Light up cells near cursor */
+        for (let gy = gyMin; gy <= gyMax; gy++) {
+          for (let gx = gxMin; gx <= gxMax; gx++) {
+            const idx = gy * cols + gx;
+            const px = oX + gx * step + halfBlock;
+            const py = oY + gy * step + halfBlock;
+            const dx = px - mx;
+            const dy = py - my;
+            const d2 = dx * dx + dy * dy;
+            if (d2 <= FLASH_R2) {
+              const dist = Math.sqrt(d2);
+              const falloff = 1 - dist * FLASH_INV_R;
+              let target = falloff * falloff; /* quadratic falloff */
+              /* Text dots: use linear falloff for much brighter pop,
+                 same approach as year dots in experience section */
+              if (isHeroCenterDot[idx] && dist < 200) {
+                target = Math.max(target, falloff * 0.95);
+              }
+              if (target > glows[idx]) {
+                /* Suppress glow buildup during convergence */
+                if (!isConverging) {
+                  glows[idx] = glows[idx] + (target - glows[idx]) * 0.55;
+                }
+              }
+            }
+          }
+        }
+      } else if (!isOnHero) {
+        /* Reset when leaving hero */
+        for (let i = 0; i < N; i++) { glows[i] = 0; }
+      }
+
+      /* ── Directional wave pulse (hero only) ── */
+      if (isOnHero) {
+        const wmx = soundMouse.x;
+        const wmy = soundMouse.y;
+        const velX = wmx - pcPrevMx;
+        const velY = wmy - pcPrevMy;
+        const speed = Math.sqrt(velX * velX + velY * velY);
+
+        if (speed > 3) {
+          pcStoppedFrames = 0;
+          pcWaveActive = true;
+          const dirX = velX / speed;
+          const dirY = velY / speed;
+          const now = performance.now();
+
+          for (let i = 0; i < N; i++) {
+            const gx = i % cols;
+            const gy = Math.floor(i / cols);
+            const px = oX + gx * step + halfBlock;
+            const py = oY + gy * step + halfBlock;
+            const toX = px - wmx;
+            const toY = py - wmy;
+            const proj = toX * dirX + toY * dirY;
+            if (proj > 0 && proj < 1200) {
+              const perp = Math.abs(toX * (-dirY) + toY * dirX);
+              if (perp < FLASH_RADIUS * 1.5) {
+                if (pulseStart[i] > 0) {
+                  const el = now - pulseStart[i];
+                  if (el >= 0 && el < PULSE_DUR) continue;
+                }
+                pulseStart[i] = now + proj / PC_WAVE_SPEED;
+              }
+            }
+          }
+        } else {
+          pcStoppedFrames++;
+          if (pcStoppedFrames > 10) pcWaveActive = false;
+        }
+        pcPrevMx = wmx;
+        pcPrevMy = wmy;
+      }
+
+      /* Fade hero overlay based on scroll — gone by 30% scroll */
+      const heroOpacity = Math.max(0, 1 - progress * 3);
+      if (heroOverlayRef.current) {
+        heroOverlayRef.current.style.opacity = String(heroOpacity);
+      }
+      if (bottomBarRef.current) {
+        bottomBarRef.current.style.opacity = String(heroOpacity);
+      }
+      if (navRef.current) {
+        navRef.current.style.opacity = "1";
+      }
+      if (indicatorRef.current) {
+        indicatorRef.current.style.opacity = "1";
+      }
+
+      /* Update section label + dots */
+      const newLabel = SECTIONS[activeSec].label;
+      if (newLabel !== currentLabel) {
+        currentLabel = newLabel;
+        if (indicatorRef.current) {
+          const labelEl =
+            indicatorRef.current.querySelector<HTMLDivElement>(".pc-label");
+          if (labelEl) labelEl.textContent = currentLabel;
+        }
+        dotEls?.forEach((dot, idx) => {
+          dot.classList.toggle("active", idx === activeSec);
+        });
+      }
+
+      /* ── Clock tick sound when cursor is near hero text particles ── */
+      if (activeSec === 0) {
+        const smx = soundMouse.x;
+        const smy = soundMouse.y;
+        const sNow = performance.now();
+        if (sNow - lastSndTime > 80) {
+          const sdx = smx - lastSndX;
+          const sdy = smy - lastSndY;
+          if (sdx * sdx + sdy * sdy > SND_DIST_SQ) {
+            const sgx = Math.floor((smx - oX) / step);
+            const sgy = Math.floor((smy - oY) / step);
+            let nearText = false;
+            for (let sdy2 = -3; sdy2 <= 3 && !nearText; sdy2++) {
+              for (let sdx2 = -3; sdx2 <= 3; sdx2++) {
+                if (heroStamp.has(`${sgx + sdx2},${sgy + sdy2}`)) {
+                  nearText = true;
+                  break;
+                }
+              }
+            }
+            if (nearText) {
+              playClockTick();
+              lastSndX = smx;
+              lastSndY = smy;
+              lastSndTime = sNow;
+            }
+          }
+        }
+      }
+
+      /* ── Clear ── */
+      ctx.clearRect(0, 0, W, H);
+
+      /* ── Update & draw ── */
+      for (let i = 0; i < N; i++) {
+        const p = particles[i];
+        const fromT = p.targets[sectionA];
+        const toT = p.targets[sectionB];
+
+        let tgtX = fromT.x * (1 - eased) + toT.x * eased;
+        let tgtY = fromT.y * (1 - eased) + toT.y * eased;
+
+        /* Text blocks: bright. Ambient: very dim. */
+        let opaA = fromT.isText ? 0.88 : 0.025;
+        let opaB = toT.isText ? 0.88 : 0.025;
+
+        let tgtOpacity: number;
+
+        /* On hero: opacity = glow directly (matches entry screen behavior).
+           All dots can reach 1.0. Glow IS the opacity. */
+        if (isOnHero) {
+          tgtOpacity = isConverging ? 0 : glows[i]; /* During convergence, decay to 0 — shooting visibility is handled by renderOp override */
+        } else {
+          tgtOpacity = opaA * (1 - eased) + opaB * eased;
+        }
+
+        let isShooting = false;
+        let shootStretch = 1;
+        let shootAngle = 0;
+        let isConverged = false;
+        let alphaMult = 1;
+
+        /* Organic noise during transition */
+        if (chaos > 0.5) {
+          tgtX += Math.sin(i * 0.37 + time * 3) * chaos;
+          tgtY += Math.cos(i * 0.53 + time * 3) * chaos;
+        }
+
+        /* Center pull during mid-transition */
+        const centerPull = Math.sin(t * Math.PI) * 0.15;
+        tgtX = tgtX * (1 - centerPull) + cX * centerPull;
+        tgtY = tgtY * (1 - centerPull) + cY * centerPull;
+
+        /* Converge toward cursor when scrolling from hero toward experience */
+        if (progress > 0.02 && progress < 0.6) {
+          const convMx = soundMouse.x > 0 ? soundMouse.x : cX;
+          const convMy = soundMouse.y > 0 ? soundMouse.y : cY;
+          const convergeProgress = Math.min(1, Math.max(0, (progress - 0.02) / 0.33));
+          
+          /* Hash using BOTH gx and gy to break column patterns */
+          const gx = i % cols;
+          const gy = Math.floor(i / cols);
+          const hash = ((gx * 73.7 + gy * 157.3 + gx * gy * 0.37) % 997) / 997;
+          
+          /* Each dot fires within a narrow 0.05 window, staggered across 0.95 of convergence */
+          const startT = hash * 0.95;
+          const localT = Math.min(1, Math.max(0, (convergeProgress - startT) / 0.05));
+
+          if (convergeProgress > 0) {
+            if (localT <= 0) {
+               alphaMult = 0; /* Remain invisible before turn comes */
+            } else if (localT < 1) {
+               isShooting = true;
+            } else {
+               isConverged = true;
+            }
+          }
+
+          /* Cubic-in easing for fast acceleration towards cursor */
+          const easeT = localT * localT * localT;
+          const easeTPrev = Math.max(0, localT - 0.1);
+          const easeTPrevCube = Math.pow(easeTPrev, 3);
+
+          const dx = convMx - tgtX;
+          const dy = convMy - tgtY;
+          
+          if (isShooting) {
+             shootAngle = Math.atan2(dy, dx);
+             const distFull = Math.sqrt(dx*dx + dy*dy);
+             const dCurr = distFull * easeT;
+             const dPrev = distFull * easeTPrevCube;
+             /* Stretch based on distance traveled in the last fraction of progress */
+             shootStretch = Math.max(3, (dCurr - dPrev) / 15); /* min 3x so it never appears as a circle */
+             alphaMult = Math.min(1, shootStretch * 0.4); /* bright spark while shooting */
+          }
+          if (isConverged) {
+             /* When fully converged, we can dim it or wait */
+             alphaMult = 0.0; /* Hide it once it hits the cursor so cursor isn't a massive blob */
+          }
+
+          tgtX = tgtX + dx * easeT;
+          tgtY = tgtY + dy * easeT;
+        }
+
+        /* ── Movement: static on hero, organic drift elsewhere ── */
+        if (isHeroSettled) {
+          /* Fast snap to target, zero drift */
+          const dx = tgtX - p.x;
+          const dy = tgtY - p.y;
+          if (Math.abs(dx) < 0.15 && Math.abs(dy) < 0.15) {
+            p.x = tgtX;
+            p.y = tgtY;
+          } else {
+            p.x += dx * 0.3;
+            p.y += dy * 0.3;
+          }
+        } else {
+          /* Smooth lerp + gentle organic drift */
+          p.x += (tgtX - p.x) * 0.065;
+          p.y += (tgtY - p.y) * 0.065;
+          p.x += Math.sin(time * 0.8 + i * 0.1) * 0.08;
+          p.y += Math.cos(time * 0.6 + i * 0.15) * 0.08;
+        }
+
+        /* Opacity lerp — match entry screen's 0.55 snap on hero */
+        const opaLerp = isOnHero ? 0.55 : 0.08;
+        p.opacity += (tgtOpacity - p.opacity) * opaLerp;
+
+        let renderOp = p.opacity * alphaMult;
+        if (isShooting) {
+           renderOp = Math.max(renderOp, Math.min(1, shootStretch * 0.5));
+        } else if (progress > 0.01) {
+           /* Once the user starts scrolling to converge, stationary hero dots vanish forever. 
+              Only shooting streaks and the converged dot remain. */
+           renderOp = 0;
+        }
+
+        /* Draw via pre-rendered sprite.
+           On hero: only draw hero-grid dots (text + pond), use large sprite.
+           On other sections: draw all dots with small sprite.
+           Size lerps smoothly during transitions. */
+        if (renderOp > 0.005) {
+          ctx.globalAlpha = renderOp;
+
+          /* Compute how much "hero" is active: 1 = fully on hero, 0 = other section */
+          let heroBlend = 0;
+          if (sectionA === 0 && sectionB === 0) heroBlend = 1;
+          else if (sectionA === 0) heroBlend = 1 - eased;
+          else if (sectionB === 0) heroBlend = eased;
+
+          if (heroBlend > 0.01) {
+            /* On hero: text dots are DOM (for anime.js 3D pop); pond dots stay on canvas */
+            if (isHeroGridDot[i]) {
+              /* Stagger pulse scale */
+              let pScale = 1;
+              if (pulseStart[i] > 0) {
+                const pNow = performance.now();
+                const pEl = pNow - pulseStart[i];
+                if (pEl >= 0 && pEl < PULSE_DUR) {
+                  pScale = 1 + 0.3 * Math.sin((pEl / PULSE_DUR) * Math.PI);
+                } else if (pEl >= PULSE_DUR) {
+                  pulseStart[i] = 0;
+                }
+              }
+              const drawSize = (spriteSize + (heroSpriteSize - spriteSize) * heroBlend) * pScale;
+              const halfDraw = drawSize / 2;
+              
+              ctx.save();
+              ctx.translate(p.x, p.y);
+              if (isShooting && shootStretch > 1) {
+                ctx.rotate(shootAngle);
+                ctx.scale(shootStretch, Math.max(0.4, 1.5 - shootStretch*0.1)); // thinner as it stretches
+              }
+              ctx.drawImage(heroDotSprite, -halfDraw, -halfDraw, drawSize, drawSize);
+              ctx.restore();
+            }
+            /* isHeroCenterDot — handled by DOM overlay below */
+            /* Skip intermediate dots — they're not part of the hero grid */
+          } else {
+            ctx.save();
+            ctx.translate(p.x, p.y);
+            if (isShooting && shootStretch > 1) {
+              ctx.rotate(shootAngle);
+              ctx.scale(shootStretch, Math.max(0.4, 1.5 - shootStretch*0.1));
+            }
+            ctx.drawImage(dotSprite, -halfSprite, -halfSprite, spriteSize, spriteSize);
+            ctx.restore();
+          }
+        }
+      }
+
+      /* ── Single "converged dot" — visible once most dots have converged ── */
+      if (isConverging && progress < 0.6) {
+        const convergeProgress = Math.min(1, Math.max(0, (progress - 0.02) / 0.33));
+        /* Count how far along convergence is — show dot once > 30% of dots have arrived */
+        if (convergeProgress > 0.3) {
+          const convMx = soundMouse.x > 0 ? soundMouse.x : cX;
+          const convMy = soundMouse.y > 0 ? soundMouse.y : cY;
+          /* Fade in the dot as more particles converge, fade out when progress > 0.5 */
+          const fadeOut = Math.max(0, 1 - (progress - 0.5) / 0.1); 
+          const dotAlpha = Math.min(1, (convergeProgress - 0.3) / 0.5) * fadeOut;
+          /* Pulsing glow effect */
+          const pulseScale = 1 + 0.15 * Math.sin(time * 6);
+          const dotSize = (6 + convergeProgress * 4) * pulseScale;
+          
+          ctx.save();
+          ctx.globalAlpha = dotAlpha;
+          /* Bright white core */
+          ctx.fillStyle = '#ffffff';
+          ctx.beginPath();
+          ctx.arc(convMx, convMy, dotSize / 2, 0, Math.PI * 2);
+          ctx.fill();
+          /* Soft glow halo */
+          ctx.globalAlpha = dotAlpha * 0.3;
+          ctx.beginPath();
+          ctx.arc(convMx, convMy, dotSize * 1.5, 0, Math.PI * 2);
+          ctx.fill();
+          ctx.restore();
+
+          /* Store MAXIMUM absolute page position so it stays fixed in place 
+             even if we keep scrolling down */
+          if (fadeOut > 0.1) {
+            (window as any).__convergedDotPos = { 
+              x: convMx, 
+              y: convMy + window.scrollY, 
+              active: true 
+            };
+          }
+        }
+      } else if (progress >= 0.6) {
+        /* Clear the converged dot once we're fully past convergence */
+        if ((window as any).__convergedDotPos?.active) {
+          (window as any).__convergedDotPos.active = false;
+        }
+      }
+      /* ── Update DOM hero text dots (opacity + trigger pop) ── */
+      if (heroDotsContainer) {
+        /* Only process/show DOM dots while on the hero section and during convergence.
+           Once we pass the convergence threshold (0.6), hide them completely. */
+        const showDomDots = progress < 0.6;
+        heroDotsContainer.style.display = showDomDots ? "" : "none";
+        if (showDomDots) {
+          const offset = entryBlockSize * 0.65;
+          for (let d = 0; d < heroDotEls.length; d++) {
+            const idx = heroDotIndices[d];
+            const g = glows[idx];
+            const p = particles[idx];
+
+            let dx = 0;
+            let dy = 0;
+            let isShooting = false;
+            let isConverged = false;
+            let shootAngle = 0;
+            let shootStretch = 1;
+            let alphaMult = 1;
+
+            if (progress > 0.02 && progress < 0.6) {
+              const convMx = soundMouse.x > 0 ? soundMouse.x : cX;
+              const convMy = soundMouse.y > 0 ? soundMouse.y : cY;
+              const convergeProgress = Math.min(1, Math.max(0, (progress - 0.02) / 0.33));
+              const gxD = idx % cols;
+              const gyD = Math.floor(idx / cols);
+              const hash = ((gxD * 73.7 + gyD * 157.3 + gxD * gyD * 0.37) % 997) / 997;
+              const startT = hash * 0.95;
+              const localT = Math.min(1, Math.max(0, (convergeProgress - startT) / 0.05));
+              
+              if (convergeProgress > 0) {
+                if (localT <= 0) {
+                  alphaMult = 0;
+                } else if (localT < 1) {
+                  isShooting = true;
+                } else {
+                  isConverged = true;
+                  alphaMult = 0; 
+                }
+              }
+              
+              const easeT = localT * localT * localT;
+              const easeTPrev = Math.max(0, localT - 0.1);
+              const easeTPrevCube = Math.pow(easeTPrev, 3);
+              
+              const fromT = p.targets[0];
+              const tX = convMx - fromT.x;
+              const tY = convMy - fromT.y;
+              dx = tX * easeT;
+              dy = tY * easeT;
+              
+              if (isShooting) {
+                shootAngle = Math.atan2(tY, tX);
+                const distFull = Math.sqrt(tX*tX + tY*tY);
+                const dCurr = distFull * easeT;
+                const dPrev = distFull * easeTPrevCube;
+                shootStretch = Math.max(3, (dCurr - dPrev) / 15); /* min 3x */
+              }
+            }
+            
+            let domOp = g * alphaMult;
+            if (isShooting) {
+                domOp = Math.max(domOp, Math.min(1, shootStretch * 0.5));
+            } else if (progress > 0.01 && progress < 0.6) {
+                /* If we are in the scroll transition zone but not shooting, force DOM dots to be invisible 
+                   so we don't see the stationary dots lingering behind. */
+                domOp = 0;
+            }
+
+            heroDotEls[d].style.opacity = String(domOp);
+            
+            /* Apply translation & stretch */
+            let transform = `translate(${dx}px, ${dy}px)`;
+            if (isShooting && shootStretch > 1) {
+               transform += ` rotate(${shootAngle}rad) scaleX(${shootStretch}) scaleY(${Math.max(0.4, 1.5 - shootStretch*0.1)})`;
+            }
+            heroDotEls[d].style.transform = transform;
+            
+            /* We don't overwrite left/top per frame so translation works correctly off original left/top */
+            if (!heroDotEls[d].dataset.init) {
+                heroDotEls[d].style.left = `${p.targets[0].x - offset}px`;
+                heroDotEls[d].style.top = `${p.targets[0].y - offset}px`;
+                heroDotEls[d].dataset.init = "1";
+            }
+
+            /* Trigger anime.js pop-forward on first reveal */
+            if (!heroDotRevealed[d] && g > 0.25) {
+              heroDotRevealed[d] = true;
+              anime({
+                targets: heroDotEls[d],
+                scale: [1, 1.35, 1.08],
+                z: [0, 18, 6],
+                duration: 700,
+                ease: "outElastic(1, .5)",
+              });
+            }
+
+            /* Wave pulse scale for text dots (after pop is done) */
+            if (!isShooting && heroDotRevealed[d] && pulseStart[idx] > 0) {
+              const pNow = performance.now();
+              const pEl = pNow - pulseStart[idx];
+              if (pEl >= 0 && pEl < PULSE_DUR) {
+                const s = 1 + 0.3 * Math.sin((pEl / PULSE_DUR) * Math.PI);
+                heroDotEls[d].style.transform = `translate(${dx}px, ${dy}px) scale(${s})`;
+              } else if (pEl >= PULSE_DUR) {
+                pulseStart[idx] = 0;
+                heroDotEls[d].style.transform = `translate(${dx}px, ${dy}px)`;
+              }
+            }
+          }
+        }
+      }
+
+      rafRef.current = requestAnimationFrame(tick);
+    };
+
+    rafRef.current = requestAnimationFrame(tick);
+
+    return () => {
+      cancelAnimationFrame(rafRef.current);
+      window.removeEventListener("mousemove", onMouseForSound);
+      window.removeEventListener("touchmove", onTouchForSound);
+      window.removeEventListener("click", initClickForSound);
+      window.removeEventListener("touchstart", initClickForSound);
+      document.body.style.overflow = "";
+      document.body.style.overflowX = "";
+      document.body.style.height = "";
+      if (heroDotsContainer) heroDotsContainer.innerHTML = "";
+    };
+  }, []);
+
+  return (
+    <>
+      <canvas ref={canvasRef} className="pc-canvas" />
+
+      {/* ── Hero text dots (DOM for anime.js 3D pop-forward) ── */}
+      <div
+        ref={heroDotsContainerRef}
+        style={{
+          position: "fixed",
+          inset: 0,
+          pointerEvents: "none",
+          zIndex: 12,
+          perspective: 800,
+          transformStyle: "preserve-3d" as React.CSSProperties["transformStyle"],
+        }}
+      />
+
+      {/* ── Navigation bar ── */}
+      <nav ref={navRef} className="pc-nav" style={{ opacity: 0 }}>
+        <div className="pc-nav-logo">
+          KK<span className="pc-diamond">◆</span>DEV
+        </div>
+        <div className="pc-nav-right">
+          <div className="pc-nav-links">
+            <a
+              href="https://github.com/kalyankumar"
+              target="_blank"
+              rel="noopener noreferrer"
+            >
+              GITHUB
+            </a>
+            <a
+              href="https://linkedin.com/in/kalyankumar"
+              target="_blank"
+              rel="noopener noreferrer"
+            >
+              LINKEDIN
+            </a>
+            <a href="/resume.pdf" target="_blank" rel="noopener noreferrer">
+              RESUME
+            </a>
+          </div>
+          <a
+            href="mailto:kkalyankumar.dev@gmail.com"
+            className="pc-nav-email"
+          >
+            <span className="pc-email-dot">●</span> KKALYANKUMAR.DEV
+          </a>
+        </div>
+      </nav>
+
+      {/* ── Hero text overlay ── */}
+      <div ref={heroOverlayRef} className="pc-hero-overlay" style={{ opacity: 0 }}>
+        <p className="pc-hero-bio">
+          I&apos;M KALYAN, A FULL-STACK SOFTWARE
+          ENGINEER BASED IN NEW JERSEY,
+          DEDICATED TO BUILDING SCALABLE
+          WEB APPLICATIONS &amp; AI-POWERED
+          TOOLS FOR PRODUCTION ENVIRONMENTS.
+          LET&apos;S CONNECT!
+        </p>
+      </div>
+
+      {/* ── Bottom bar (hero section only) ── */}
+      <div ref={bottomBarRef} className="pc-bottom-bar" style={{ opacity: 0 }}>
+        <span className="pc-scroll-hint">SCROLL TO SEE MORE</span>
+        <span className="pc-available">AVAILABLE FOR OPPORTUNITIES</span>
+      </div>
+
+      {/* Scroll spacers */}
+      <div className="pc-sections">
+        {SECTIONS.map((_, i) => (
+          <section key={i} className="pc-section" data-section={i} />
+        ))}
+      </div>
+
+      {/* Section indicator */}
+      <div ref={indicatorRef} className="pc-indicator" style={{ opacity: 0 }}>
+        <div className="pc-label">{SECTIONS[0].label}</div>
+        <div className="pc-dots">
+          {SECTIONS.map((_, i) => (
+            <div key={i} className={`pc-dot${i === 0 ? " active" : ""}`} />
+          ))}
+        </div>
+      </div>
+    </>
+  );
+}
+
+```
+
+### File: app/components/clock-tick.ts
+```ts
+/* ─── Clock tick sound — Web Audio API synthesis ───
+   Mimics the mechanical "tick" of a clock's second-hand escapement.
+   Shared AudioContext across components for efficiency. */
+
+let audioCtx: AudioContext | null = null;
+
+function ensureCtx(): AudioContext {
+  if (!audioCtx) {
+    audioCtx = new AudioContext();
+  }
+  if (audioCtx.state === "suspended") {
+    audioCtx.resume();
+  }
+  return audioCtx;
+}
+
+/** Call from a user-gesture handler (click/touch) to unlock audio on mobile. */
+export function initAudio() {
+  ensureCtx();
+}
+
+export function playClockTick(volume = 0.12) {
+  const ctx = ensureCtx();
+  
+  /* Prevent queuing up hundreds of sounds at t=0 while the browser has autoplay blocked. 
+     Otherwise they all suddenly play at once when the user clicks, causing a deafening pop. */
+  if (ctx.state === "suspended") return;
+
+  const t = ctx.currentTime;
+
+  /* Resonant body — the "tick" of the escapement mechanism */
+  const osc = ctx.createOscillator();
+  const bodyGain = ctx.createGain();
+  osc.type = "sine";
+  osc.frequency.setValueAtTime(1800 + Math.random() * 100, t);
+  osc.frequency.exponentialRampToValueAtTime(600, t + 0.015);
+  bodyGain.gain.setValueAtTime(volume, t);
+  bodyGain.gain.exponentialRampToValueAtTime(0.001, t + 0.02);
+  osc.connect(bodyGain);
+  bodyGain.connect(ctx.destination);
+  osc.start(t);
+  osc.stop(t + 0.025);
+
+  /* Sharp click — the mechanical impact */
+  const click = ctx.createOscillator();
+  const clickGain = ctx.createGain();
+  click.type = "square";
+  click.frequency.setValueAtTime(4000 + Math.random() * 500, t);
+  clickGain.gain.setValueAtTime(volume * 0.3, t);
+  clickGain.gain.exponentialRampToValueAtTime(0.001, t + 0.004);
+  click.connect(clickGain);
+  clickGain.connect(ctx.destination);
+  click.start(t);
+  click.stop(t + 0.006);
+}
+
+```
+
+### File: app/components/entry-screen.css
+```css
+/* ═══════════════════════════════════════
+   Entry Screen — Nothing-inspired 3D Blocks
+   ═══════════════════════════════════════ */
+
+/* ── Root ── */
+.entry {
+  position: fixed;
+  inset: 0;
+  width: 100vw;
+  height: 100vh;
+  background: #0a0a0a;
+  overflow: hidden;
+  cursor: crosshair;
+  z-index: 100;
+}
+
+/* Subtle scan-line overlay for tech texture */
+.entry::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  background: repeating-linear-gradient(
+    to bottom,
+    transparent 0px,
+    transparent 3px,
+    rgba(0, 0, 0, 0.025) 3px,
+    rgba(0, 0, 0, 0.025) 4px
+  );
+  pointer-events: none;
+  z-index: 10;
+}
+
+/* ── Block grid container (3D perspective) ── */
+.entry__grid {
+  position: absolute;
+  inset: 0;
+  z-index: 1;
+  perspective: 1200px;
+  transform-style: preserve-3d;
+}
+
+/* ── Individual dot (Nothing Glyph style) ── */
+.entry__block {
+  position: absolute;
+  border-radius: 50%;
+  background: #fff;
+  opacity: 0;
+  will-change: transform, opacity;
+  backface-visibility: hidden;
+  transform: translateZ(0);
+}
+
+/* ── Cursor ambient glow overlay ── */
+.entry__cursor-glow {
+  position: absolute;
+  inset: 0;
+  z-index: 2;
+  pointer-events: none;
+  mix-blend-mode: screen;
+}
+
+/* ── UI Overlay ── */
+.entry__overlay {
+  position: absolute;
+  inset: 0;
+  z-index: 5;
+  pointer-events: none;
+}
+
+/* ── Hint ── */
+.entry__hint {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 12px;
+  animation: hintFadeIn 1s ease 8ms both;
+}
+
+.entry__hint-icon {
+  font-family: var(--font-mono), monospace;
+  font-size: 28px;
+  color: #ffffff40;
+  animation: hintPulse 2.2s ease-in-out infinite;
+}
+
+.entry__hint-text {
+  font-family: var(--font-mono), monospace;
+  font-size: 12px;
+  color: #ffffff30;
+  letter-spacing: 4px;
+  text-transform: lowercase;
+}
+
+/* ── Found counter (two dots) ── */
+.entry__found {
+  position: absolute;
+  top: 30px;
+  left: 50%;
+  transform: translateX(-50%);
+  display: flex;
+  gap: 12px;
+  align-items: center;
+}
+
+.entry__found-dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  border: 1px solid #ffffff30;
+  background: transparent;
+  transition:
+    background 4ms ease,
+    border-color 4ms ease,
+    box-shadow 4ms ease;
+}
+
+.entry__found-dot.lit {
+  background: #ffffff;
+  border-color: #ffffff;
+  box-shadow:
+    0 0 12px #ffffff80,
+    0 0 24px #ffffff40;
+}
+
+/* ── Corner details ── */
+.entry__coord,
+.entry__version {
+  position: absolute;
+  bottom: 20px;
+  font-family: var(--font-mono), monospace;
+  font-size: 9px;
+  color: #ffffff18;
+  letter-spacing: 2px;
+}
+.entry__coord {
+  left: 30px;
+}
+.entry__version {
+  right: 30px;
+}
+
+/* ── LED Strip Accents ── */
+.entry__led {
+  position: absolute;
+  z-index: 3;
+  pointer-events: none;
+}
+
+.entry__led--top,
+.entry__led--bottom {
+  left: 50%;
+  transform: translateX(-50%);
+  height: 1px;
+  width: 0;
+  background: linear-gradient(
+    90deg,
+    #ffffff00 0%,
+    #ffffff40 50%,
+    #ffffff00 100%
+  );
+  animation: ledChargeH 2.5s ease-out 500ms forwards;
+}
+.entry__led--top {
+  top: 20px;
+}
+.entry__led--bottom {
+  bottom: 20px;
+}
+
+.entry__led--left,
+.entry__led--right {
+  top: 50%;
+  transform: translateY(-50%);
+  width: 1px;
+  height: 0;
+  background: linear-gradient(
+    180deg,
+    #ffffff00 0%,
+    #ffffff20 50%,
+    #ffffff00 100%
+  );
+  animation: ledChargeV 0.5s ease-out 80ms forwards;
+}
+.entry__led--left {
+  left: 20px;
+}
+.entry__led--right {
+  right: 20px;
+}
+
+/* ── Vibrate phase: LED strips build cinematically ── */
+.phase-vibrate .entry__led--top,
+.phase-vibrate .entry__led--bottom {
+  width: min(360px, 50vw);
+  background: linear-gradient(
+    90deg,
+    #ffffff00 0%,
+    #ffffff 50%,
+    #ffffff00 100%
+  );
+  animation: ledCinematicH 4.3s ease-in forwards;
+}
+
+.phase-vibrate .entry__led--left,
+.phase-vibrate .entry__led--right {
+  height: min(240px, 30vh);
+  background: linear-gradient(
+    180deg,
+    #ffffff00 0%,
+    #ffffff80 50%,
+    #ffffff00 100%
+  );
+  animation: ledCinematicV 4.3s ease-in forwards;
+}
+
+/* ── Glyph corner marks ── */
+.entry__glyph-corner {
+  position: absolute;
+  width: 16px;
+  height: 16px;
+  z-index: 3;
+  pointer-events: none;
+  opacity: 0;
+  animation: fadeIn 600ms ease 1.2s forwards;
+}
+.entry__glyph-corner--tl {
+  top: 14px;
+  left: 14px;
+  border-top: 1px solid #ffffff20;
+  border-left: 1px solid #ffffff20;
+}
+.entry__glyph-corner--tr {
+  top: 14px;
+  right: 14px;
+  border-top: 1px solid #ffffff20;
+  border-right: 1px solid #ffffff20;
+}
+.entry__glyph-corner--bl {
+  bottom: 14px;
+  left: 14px;
+  border-bottom: 1px solid #ffffff20;
+  border-left: 1px solid #ffffff20;
+}
+.entry__glyph-corner--br {
+  bottom: 14px;
+  right: 14px;
+  border-bottom: 1px solid #ffffff20;
+  border-right: 1px solid #ffffff20;
+}
+
+/* ── Vibrate phase: corner marks build then flash ── */
+.phase-vibrate .entry__glyph-corner {
+  opacity: 1;
+  animation: cornerCinematic 4.3s ease-in forwards;
+}
+
+/* ── Converge phase: fade out decorations ── */
+.phase-converge .entry__led {
+  opacity: 0 !important;
+  transition: opacity 600ms ease-out;
+  animation: none !important;
+}
+.phase-converge .entry__glyph-corner {
+  opacity: 0 !important;
+  transition: opacity 600ms ease-out;
+  animation: none !important;
+}
+.phase-converge .entry__overlay {
+  opacity: 0;
+  transition: opacity 400ms ease-out;
+}
+
+/* ── Loading counter (convergence) ── */
+.entry__loader {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  z-index: 15;
+  font-family: var(--font-mono), monospace;
+  font-size: clamp(32px, 5vw, 56px);
+  font-weight: 300;
+  color: #ffffff;
+  letter-spacing: 6px;
+  opacity: 0.85;
+  pointer-events: none;
+  text-shadow: 0 0 40px rgba(255, 255, 255, 0.25);
+}
+
+/* ═══════════════════════════════════════
+   Keyframes
+   ═══════════════════════════════════════ */
+
+@keyframes hintFadeIn {
+  from {
+    opacity: 0;
+    transform: translate(-50%, -50%) translateY(8px);
+  }
+  to {
+    opacity: 1;
+    transform: translate(-50%, -50%) translateY(0);
+  }
+}
+
+@keyframes hintPulse {
+  0%,
+  100% {
+    opacity: 0.5;
+  }
+  50% {
+    opacity: 1;
+  }
+}
+
+@keyframes ledChargeH {
+  from {
+    width: 0;
+  }
+  to {
+    width: min(260px, 35vw);
+  }
+}
+
+@keyframes ledChargeV {
+  from {
+    height: 0;
+  }
+  to {
+    height: min(160px, 20vh);
+  }
+}
+
+/* LED strips: gentle pulse → accelerating flicker → bright hold → flash */
+@keyframes ledCinematicH {
+  0%   { opacity: 0.15; width: min(120px, 15vw); }
+  25%  { opacity: 0.35; width: min(200px, 28vw); }
+  50%  { opacity: 0.5;  width: min(280px, 40vw); }
+  60%  { opacity: 0.3; }
+  65%  { opacity: 0.7; }
+  70%  { opacity: 0.2; }
+  75%  { opacity: 0.85; }
+  80%  { opacity: 0.4; }
+  85%  { opacity: 0.95; width: min(340px, 48vw); }
+  88%  { opacity: 0.2; }  /* inhale dim */
+  92%  { opacity: 0.1; }
+  95%  { opacity: 1; width: min(360px, 50vw); }  /* detonation flash */
+  100% { opacity: 0; }
+}
+
+@keyframes ledCinematicV {
+  0%   { opacity: 0.15; height: min(80px, 10vh); }
+  25%  { opacity: 0.3;  height: min(140px, 18vh); }
+  50%  { opacity: 0.45; height: min(200px, 25vh); }
+  60%  { opacity: 0.25; }
+  65%  { opacity: 0.65; }
+  70%  { opacity: 0.15; }
+  75%  { opacity: 0.8; }
+  80%  { opacity: 0.35; }
+  85%  { opacity: 0.9;  height: min(230px, 28vh); }
+  88%  { opacity: 0.15; }
+  92%  { opacity: 0.1; }
+  95%  { opacity: 1;    height: min(240px, 30vh); }
+  100% { opacity: 0; }
+}
+
+/* Corner marks: subtle breathe → accelerating strobe → inhale dim → flash */
+@keyframes cornerCinematic {
+  0%   { opacity: 0.1;  border-color: #ffffff15; }
+  30%  { opacity: 0.4;  border-color: #ffffff40; }
+  50%  { opacity: 0.55; border-color: #ffffff60; }
+  60%  { opacity: 0.2;  border-color: #ffffff20; }
+  65%  { opacity: 0.7;  border-color: #ffffff90; }
+  72%  { opacity: 0.15; border-color: #ffffff15; }
+  78%  { opacity: 0.85; border-color: #ffffffcc; }
+  85%  { opacity: 0.3;  border-color: #ffffff30; }
+  88%  { opacity: 0.1;  border-color: #ffffff10; }  /* inhale */
+  95%  { opacity: 1;    border-color: #ffffff; }     /* flash */
+  100% { opacity: 0;    border-color: #ffffff00; }
+}
+
+@keyframes fadeIn {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+
+/* ═══════════════════════════════════════
+   Mobile
+   ═══════════════════════════════════════ */
+
+@media (max-width: 600px) {
+  .entry__coord,
+  .entry__version {
+    bottom: 10px;
+    font-size: 8px;
+  }
+  .entry__coord {
+    left: 12px;
+  }
+  .entry__version {
+    right: 12px;
+  }
+  .entry__led--top {
+    top: 10px;
+  }
+  .entry__led--bottom {
+    bottom: 10px;
+  }
+  .entry__led--left {
+    left: 10px;
+  }
+  .entry__led--right {
+    right: 10px;
+  }
+  .entry__glyph-corner--tl {
+    top: 6px;
+    left: 6px;
+  }
+  .entry__glyph-corner--tr {
+    top: 6px;
+    right: 6px;
+  }
+  .entry__glyph-corner--bl {
+    bottom: 6px;
+    left: 6px;
+  }
+  .entry__glyph-corner--br {
+    bottom: 6px;
+    right: 6px;
+  }
+}
+
+/* ═══════════════════════════════════════
+   Reduced motion
+   ═══════════════════════════════════════ */
+
+@media (prefers-reduced-motion: reduce) {
+  .entry__hint-icon {
+    animation: none;
+    opacity: 0.7;
+  }
+  .entry__block {
+    will-change: auto;
+  }
+}
+
+```
+
+### File: app/components/particle-canvas.css
+```css
+/* ═══════════════════════════════════════
+   Particle Canvas — Scroll-driven particle text
+   ═══════════════════════════════════════ */
+
+/* ── Fixed canvas ── */
+.pc-canvas {
+  position: fixed;
+  inset: 0;
+  width: 100vw;
+  height: 100vh;
+  z-index: 10;
+  pointer-events: none;
+  background: #0a0a0a;
+}
+
+/* ── Cursor ambient glow (matches entry screen) ── */
+.pc-cursor-glow {
+  position: fixed;
+  inset: 0;
+  z-index: 11;
+  pointer-events: none;
+  mix-blend-mode: screen;
+}
+
+/* ── Scroll spacers ── */
+.pc-sections {
+  position: relative;
+  z-index: 1;
+}
+
+.pc-section {
+  height: 100vh;
+  width: 100%;
+}
+
+/* ═══════════════════════════════════════
+   Navigation bar
+   ═══════════════════════════════════════ */
+.pc-nav {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  z-index: 30;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 20px 32px;
+  pointer-events: auto;
+}
+
+.pc-nav-logo {
+  font-family: var(--font-mono), monospace;
+  font-size: 14px;
+  font-weight: 600;
+  color: #ffffffcc;
+  letter-spacing: 2px;
+  user-select: none;
+}
+
+.pc-diamond {
+  color: #ffffff50;
+  margin: 0 1px;
+}
+
+.pc-nav-right {
+  display: flex;
+  align-items: center;
+  gap: 32px;
+}
+
+.pc-nav-links {
+  display: flex;
+  gap: 28px;
+}
+
+.pc-nav-links a {
+  font-family: var(--font-mono), monospace;
+  font-size: 12px;
+  color: #ffffffaa;
+  text-decoration: none;
+  letter-spacing: 2px;
+  transition: color 200ms;
+}
+
+.pc-nav-links a:hover {
+  color: #ffffff;
+}
+
+.pc-nav-email {
+  font-family: var(--font-mono), monospace;
+  font-size: 11px;
+  color: #ffffffcc;
+  text-decoration: none;
+  letter-spacing: 1px;
+  border: 1px solid #ffffff25;
+  border-radius: 20px;
+  padding: 8px 18px;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  transition: border-color 200ms, color 200ms;
+}
+
+.pc-nav-email:hover {
+  border-color: #ffffff50;
+  color: #ffffff;
+}
+
+.pc-email-dot {
+  color: #4ade80;
+  font-size: 8px;
+}
+
+/* ═══════════════════════════════════════
+   Hero text overlay
+   ═══════════════════════════════════════ */
+.pc-hero-overlay {
+  position: fixed;
+  left: 50%;
+  top: 50%;
+  transform: translate(-50%, -50%);
+  z-index: 25;
+  max-width: 520px;
+  text-align: center;
+  pointer-events: none;
+  transition: opacity 300ms ease;
+}
+
+.pc-hero-bio {
+  font-family: var(--font-mono), monospace;
+  font-size: 14px;
+  line-height: 2;
+  color: #ffffffcc;
+  letter-spacing: 1.5px;
+  text-transform: uppercase;
+  margin: 0;
+}
+
+/* ═══════════════════════════════════════
+   Bottom bar (hero section)
+   ═══════════════════════════════════════ */
+.pc-bottom-bar {
+  position: fixed;
+  bottom: 24px;
+  left: 32px;
+  right: 32px;
+  z-index: 25;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  pointer-events: none;
+  transition: opacity 300ms ease;
+}
+
+.pc-scroll-hint,
+.pc-available {
+  font-family: var(--font-mono), monospace;
+  font-size: 11px;
+  color: #ffffff60;
+  letter-spacing: 2px;
+  text-transform: uppercase;
+}
+
+/* ═══════════════════════════════════════
+   Section indicator
+   ═══════════════════════════════════════ */
+.pc-indicator {
+  position: fixed;
+  right: 28px;
+  top: 50%;
+  transform: translateY(-50%);
+  z-index: 20;
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 16px;
+  pointer-events: none;
+}
+
+.pc-label {
+  font-family: var(--font-mono), monospace;
+  font-size: 9px;
+  color: #ffffff20;
+  letter-spacing: 3px;
+  text-transform: lowercase;
+  writing-mode: vertical-rl;
+  text-orientation: mixed;
+  transform: rotate(180deg);
+  margin-bottom: 8px;
+  transition: color 400ms ease;
+}
+
+.pc-dots {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  align-items: center;
+}
+
+.pc-dot {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  border: 1px solid #ffffff20;
+  background: transparent;
+  transition:
+    background 400ms ease,
+    border-color 400ms ease,
+    box-shadow 400ms ease;
+}
+
+.pc-dot.active {
+  background: #ffffff;
+  border-color: #ffffff;
+  box-shadow:
+    0 0 8px #ffffff60,
+    0 0 16px #ffffff30;
+}
+
+/* ═══════════════════════════════════════
+   Mobile
+   ═══════════════════════════════════════ */
+@media (max-width: 600px) {
+  .pc-nav {
+    padding: 14px 16px;
+  }
+
+  .pc-nav-right {
+    gap: 12px;
+  }
+
+  .pc-nav-links {
+    gap: 14px;
+  }
+
+  .pc-nav-links a {
+    font-size: 10px;
+    letter-spacing: 1px;
+  }
+
+  .pc-nav-email {
+    display: none;
+  }
+
+  .pc-hero-overlay {
+    left: 50%;
+    max-width: 280px;
+  }
+
+  .pc-hero-bio {
+    font-size: 11px;
+    line-height: 1.7;
+    letter-spacing: 1px;
+  }
+
+  .pc-bottom-bar {
+    left: 16px;
+    right: 16px;
+    bottom: 16px;
+  }
+
+  .pc-scroll-hint,
+  .pc-available {
+    font-size: 9px;
+    letter-spacing: 1px;
+  }
+
+  .pc-indicator {
+    right: 12px;
+  }
+
+  .pc-label {
+    font-size: 8px;
+    letter-spacing: 2px;
+  }
+
+  .pc-dot {
+    width: 5px;
+    height: 5px;
+  }
+}
+
+/* ── Tablet ── */
+@media (min-width: 601px) and (max-width: 1024px) {
+  .pc-nav {
+    padding: 18px 24px;
+  }
+
+  .pc-nav-links {
+    gap: 20px;
+  }
+
+  .pc-hero-overlay {
+    left: 50%;
+    max-width: 400px;
+  }
+
+  .pc-bottom-bar {
+    left: 24px;
+    right: 24px;
+  }
+}
+
+```
+
+### File: app/components/pixel-font.ts
+```ts
+/* ═══════════════════════════════════════
+   Pixel-art bitmap font — 5 cols × 7 rows per character.
+   Matches the EntryScreen K-reveal aesthetic exactly.
+   ═══════════════════════════════════════ */
+
+export const FONT: Record<string, number[][]> = {
+  /* ── Uppercase A-Z ── */
+  A: [
+    [0, 1, 1, 1, 0],
+    [1, 0, 0, 0, 1],
+    [1, 0, 0, 0, 1],
+    [1, 1, 1, 1, 1],
+    [1, 0, 0, 0, 1],
+    [1, 0, 0, 0, 1],
+    [1, 0, 0, 0, 1],
+  ],
+  B: [
+    [1, 1, 1, 1, 0],
+    [1, 0, 0, 0, 1],
+    [1, 0, 0, 0, 1],
+    [1, 1, 1, 1, 0],
+    [1, 0, 0, 0, 1],
+    [1, 0, 0, 0, 1],
+    [1, 1, 1, 1, 0],
+  ],
+  C: [
+    [0, 1, 1, 1, 0],
+    [1, 0, 0, 0, 1],
+    [1, 0, 0, 0, 0],
+    [1, 0, 0, 0, 0],
+    [1, 0, 0, 0, 0],
+    [1, 0, 0, 0, 1],
+    [0, 1, 1, 1, 0],
+  ],
+  D: [
+    [1, 1, 1, 1, 0],
+    [1, 0, 0, 0, 1],
+    [1, 0, 0, 0, 1],
+    [1, 0, 0, 0, 1],
+    [1, 0, 0, 0, 1],
+    [1, 0, 0, 0, 1],
+    [1, 1, 1, 1, 0],
+  ],
+  E: [
+    [1, 1, 1, 1, 1],
+    [1, 0, 0, 0, 0],
+    [1, 0, 0, 0, 0],
+    [1, 1, 1, 1, 0],
+    [1, 0, 0, 0, 0],
+    [1, 0, 0, 0, 0],
+    [1, 1, 1, 1, 1],
+  ],
+  F: [
+    [1, 1, 1, 1, 1],
+    [1, 0, 0, 0, 0],
+    [1, 0, 0, 0, 0],
+    [1, 1, 1, 1, 0],
+    [1, 0, 0, 0, 0],
+    [1, 0, 0, 0, 0],
+    [1, 0, 0, 0, 0],
+  ],
+  G: [
+    [0, 1, 1, 1, 0],
+    [1, 0, 0, 0, 1],
+    [1, 0, 0, 0, 0],
+    [1, 0, 1, 1, 1],
+    [1, 0, 0, 0, 1],
+    [1, 0, 0, 0, 1],
+    [0, 1, 1, 1, 0],
+  ],
+  H: [
+    [1, 0, 0, 0, 1],
+    [1, 0, 0, 0, 1],
+    [1, 0, 0, 0, 1],
+    [1, 1, 1, 1, 1],
+    [1, 0, 0, 0, 1],
+    [1, 0, 0, 0, 1],
+    [1, 0, 0, 0, 1],
+  ],
+  I: [
+    [1, 1, 1, 1, 1],
+    [0, 0, 1, 0, 0],
+    [0, 0, 1, 0, 0],
+    [0, 0, 1, 0, 0],
+    [0, 0, 1, 0, 0],
+    [0, 0, 1, 0, 0],
+    [1, 1, 1, 1, 1],
+  ],
+  J: [
+    [0, 0, 1, 1, 1],
+    [0, 0, 0, 1, 0],
+    [0, 0, 0, 1, 0],
+    [0, 0, 0, 1, 0],
+    [0, 0, 0, 1, 0],
+    [1, 0, 0, 1, 0],
+    [0, 1, 1, 0, 0],
+  ],
+  K: [
+    [1, 0, 0, 0, 1],
+    [1, 0, 0, 1, 0],
+    [1, 0, 1, 0, 0],
+    [1, 1, 0, 0, 0],
+    [1, 0, 1, 0, 0],
+    [1, 0, 0, 1, 0],
+    [1, 0, 0, 0, 1],
+  ],
+  L: [
+    [1, 0, 0, 0, 0],
+    [1, 0, 0, 0, 0],
+    [1, 0, 0, 0, 0],
+    [1, 0, 0, 0, 0],
+    [1, 0, 0, 0, 0],
+    [1, 0, 0, 0, 0],
+    [1, 1, 1, 1, 1],
+  ],
+  M: [
+    [1, 0, 0, 0, 1],
+    [1, 1, 0, 1, 1],
+    [1, 0, 1, 0, 1],
+    [1, 0, 0, 0, 1],
+    [1, 0, 0, 0, 1],
+    [1, 0, 0, 0, 1],
+    [1, 0, 0, 0, 1],
+  ],
+  N: [
+    [1, 0, 0, 0, 1],
+    [1, 1, 0, 0, 1],
+    [1, 0, 1, 0, 1],
+    [1, 0, 0, 1, 1],
+    [1, 0, 0, 0, 1],
+    [1, 0, 0, 0, 1],
+    [1, 0, 0, 0, 1],
+  ],
+  O: [
+    [0, 1, 1, 1, 0],
+    [1, 0, 0, 0, 1],
+    [1, 0, 0, 0, 1],
+    [1, 0, 0, 0, 1],
+    [1, 0, 0, 0, 1],
+    [1, 0, 0, 0, 1],
+    [0, 1, 1, 1, 0],
+  ],
+  P: [
+    [1, 1, 1, 1, 0],
+    [1, 0, 0, 0, 1],
+    [1, 0, 0, 0, 1],
+    [1, 1, 1, 1, 0],
+    [1, 0, 0, 0, 0],
+    [1, 0, 0, 0, 0],
+    [1, 0, 0, 0, 0],
+  ],
+  Q: [
+    [0, 1, 1, 1, 0],
+    [1, 0, 0, 0, 1],
+    [1, 0, 0, 0, 1],
+    [1, 0, 0, 0, 1],
+    [1, 0, 1, 0, 1],
+    [1, 0, 0, 1, 0],
+    [0, 1, 1, 0, 1],
+  ],
+  R: [
+    [1, 1, 1, 1, 0],
+    [1, 0, 0, 0, 1],
+    [1, 0, 0, 0, 1],
+    [1, 1, 1, 1, 0],
+    [1, 0, 1, 0, 0],
+    [1, 0, 0, 1, 0],
+    [1, 0, 0, 0, 1],
+  ],
+  S: [
+    [0, 1, 1, 1, 1],
+    [1, 0, 0, 0, 0],
+    [1, 0, 0, 0, 0],
+    [0, 1, 1, 1, 0],
+    [0, 0, 0, 0, 1],
+    [0, 0, 0, 0, 1],
+    [1, 1, 1, 1, 0],
+  ],
+  T: [
+    [1, 1, 1, 1, 1],
+    [0, 0, 1, 0, 0],
+    [0, 0, 1, 0, 0],
+    [0, 0, 1, 0, 0],
+    [0, 0, 1, 0, 0],
+    [0, 0, 1, 0, 0],
+    [0, 0, 1, 0, 0],
+  ],
+  U: [
+    [1, 0, 0, 0, 1],
+    [1, 0, 0, 0, 1],
+    [1, 0, 0, 0, 1],
+    [1, 0, 0, 0, 1],
+    [1, 0, 0, 0, 1],
+    [1, 0, 0, 0, 1],
+    [0, 1, 1, 1, 0],
+  ],
+  V: [
+    [1, 0, 0, 0, 1],
+    [1, 0, 0, 0, 1],
+    [1, 0, 0, 0, 1],
+    [1, 0, 0, 0, 1],
+    [1, 0, 0, 0, 1],
+    [0, 1, 0, 1, 0],
+    [0, 0, 1, 0, 0],
+  ],
+  W: [
+    [1, 0, 0, 0, 1],
+    [1, 0, 0, 0, 1],
+    [1, 0, 0, 0, 1],
+    [1, 0, 0, 0, 1],
+    [1, 0, 1, 0, 1],
+    [1, 1, 0, 1, 1],
+    [1, 0, 0, 0, 1],
+  ],
+  X: [
+    [1, 0, 0, 0, 1],
+    [1, 0, 0, 0, 1],
+    [0, 1, 0, 1, 0],
+    [0, 0, 1, 0, 0],
+    [0, 1, 0, 1, 0],
+    [1, 0, 0, 0, 1],
+    [1, 0, 0, 0, 1],
+  ],
+  Y: [
+    [1, 0, 0, 0, 1],
+    [1, 0, 0, 0, 1],
+    [0, 1, 0, 1, 0],
+    [0, 0, 1, 0, 0],
+    [0, 0, 1, 0, 0],
+    [0, 0, 1, 0, 0],
+    [0, 0, 1, 0, 0],
+  ],
+  Z: [
+    [1, 1, 1, 1, 1],
+    [0, 0, 0, 0, 1],
+    [0, 0, 0, 1, 0],
+    [0, 0, 1, 0, 0],
+    [0, 1, 0, 0, 0],
+    [1, 0, 0, 0, 0],
+    [1, 1, 1, 1, 1],
+  ],
+
+  /* ── Digits 0-9 ── */
+  "0": [
+    [0, 1, 1, 1, 0],
+    [1, 0, 0, 0, 1],
+    [1, 0, 0, 1, 1],
+    [1, 0, 1, 0, 1],
+    [1, 1, 0, 0, 1],
+    [1, 0, 0, 0, 1],
+    [0, 1, 1, 1, 0],
+  ],
+  "1": [
+    [0, 0, 1, 0, 0],
+    [0, 1, 1, 0, 0],
+    [1, 0, 1, 0, 0],
+    [0, 0, 1, 0, 0],
+    [0, 0, 1, 0, 0],
+    [0, 0, 1, 0, 0],
+    [1, 1, 1, 1, 1],
+  ],
+  "2": [
+    [0, 1, 1, 1, 0],
+    [1, 0, 0, 0, 1],
+    [0, 0, 0, 1, 0],
+    [0, 0, 1, 0, 0],
+    [0, 1, 0, 0, 0],
+    [1, 0, 0, 0, 0],
+    [1, 1, 1, 1, 1],
+  ],
+  "3": [
+    [0, 1, 1, 1, 0],
+    [1, 0, 0, 0, 1],
+    [0, 0, 0, 0, 1],
+    [0, 0, 1, 1, 0],
+    [0, 0, 0, 0, 1],
+    [1, 0, 0, 0, 1],
+    [0, 1, 1, 1, 0],
+  ],
+  "4": [
+    [0, 0, 0, 1, 0],
+    [0, 0, 1, 1, 0],
+    [0, 1, 0, 1, 0],
+    [1, 0, 0, 1, 0],
+    [1, 1, 1, 1, 1],
+    [0, 0, 0, 1, 0],
+    [0, 0, 0, 1, 0],
+  ],
+  "5": [
+    [1, 1, 1, 1, 1],
+    [1, 0, 0, 0, 0],
+    [1, 1, 1, 1, 0],
+    [0, 0, 0, 0, 1],
+    [0, 0, 0, 0, 1],
+    [1, 0, 0, 0, 1],
+    [0, 1, 1, 1, 0],
+  ],
+  "6": [
+    [0, 1, 1, 1, 0],
+    [1, 0, 0, 0, 0],
+    [1, 0, 0, 0, 0],
+    [1, 1, 1, 1, 0],
+    [1, 0, 0, 0, 1],
+    [1, 0, 0, 0, 1],
+    [0, 1, 1, 1, 0],
+  ],
+  "7": [
+    [1, 1, 1, 1, 1],
+    [0, 0, 0, 0, 1],
+    [0, 0, 0, 1, 0],
+    [0, 0, 1, 0, 0],
+    [0, 1, 0, 0, 0],
+    [0, 1, 0, 0, 0],
+    [0, 1, 0, 0, 0],
+  ],
+  "8": [
+    [0, 1, 1, 1, 0],
+    [1, 0, 0, 0, 1],
+    [1, 0, 0, 0, 1],
+    [0, 1, 1, 1, 0],
+    [1, 0, 0, 0, 1],
+    [1, 0, 0, 0, 1],
+    [0, 1, 1, 1, 0],
+  ],
+  "9": [
+    [0, 1, 1, 1, 0],
+    [1, 0, 0, 0, 1],
+    [1, 0, 0, 0, 1],
+    [0, 1, 1, 1, 1],
+    [0, 0, 0, 0, 1],
+    [0, 0, 0, 0, 1],
+    [0, 1, 1, 1, 0],
+  ],
+
+  /* ── Symbols ── */
+  " ": [
+    [0, 0, 0],
+    [0, 0, 0],
+    [0, 0, 0],
+    [0, 0, 0],
+    [0, 0, 0],
+    [0, 0, 0],
+    [0, 0, 0],
+  ],
+  "+": [
+    [0, 0, 0, 0, 0],
+    [0, 0, 1, 0, 0],
+    [0, 0, 1, 0, 0],
+    [1, 1, 1, 1, 1],
+    [0, 0, 1, 0, 0],
+    [0, 0, 1, 0, 0],
+    [0, 0, 0, 0, 0],
+  ],
+  "-": [
+    [0, 0, 0, 0, 0],
+    [0, 0, 0, 0, 0],
+    [0, 0, 0, 0, 0],
+    [1, 1, 1, 1, 1],
+    [0, 0, 0, 0, 0],
+    [0, 0, 0, 0, 0],
+    [0, 0, 0, 0, 0],
+  ],
+  ".": [
+    [0, 0, 0],
+    [0, 0, 0],
+    [0, 0, 0],
+    [0, 0, 0],
+    [0, 0, 0],
+    [0, 0, 0],
+    [0, 1, 0],
+  ],
+  "/": [
+    [0, 0, 0, 0, 1],
+    [0, 0, 0, 1, 0],
+    [0, 0, 0, 1, 0],
+    [0, 0, 1, 0, 0],
+    [0, 1, 0, 0, 0],
+    [0, 1, 0, 0, 0],
+    [1, 0, 0, 0, 0],
+  ],
+  ":": [
+    [0, 0, 0],
+    [0, 0, 0],
+    [0, 1, 0],
+    [0, 0, 0],
+    [0, 1, 0],
+    [0, 0, 0],
+    [0, 0, 0],
+  ],
+  "@": [
+    [0, 1, 1, 1, 0],
+    [1, 0, 0, 0, 1],
+    [1, 0, 1, 1, 1],
+    [1, 0, 1, 0, 1],
+    [1, 0, 1, 1, 1],
+    [1, 0, 0, 0, 0],
+    [0, 1, 1, 1, 0],
+  ],
+  ",": [
+    [0, 0, 0],
+    [0, 0, 0],
+    [0, 0, 0],
+    [0, 0, 0],
+    [0, 0, 0],
+    [0, 1, 0],
+    [1, 0, 0],
+  ],
+  "(": [
+    [0, 0, 1],
+    [0, 1, 0],
+    [1, 0, 0],
+    [1, 0, 0],
+    [1, 0, 0],
+    [0, 1, 0],
+    [0, 0, 1],
+  ],
+  ")": [
+    [1, 0, 0],
+    [0, 1, 0],
+    [0, 0, 1],
+    [0, 0, 1],
+    [0, 0, 1],
+    [0, 1, 0],
+    [1, 0, 0],
+  ],
+  "%": [
+    [1, 1, 0, 0, 1],
+    [1, 1, 0, 1, 0],
+    [0, 0, 0, 1, 0],
+    [0, 0, 1, 0, 0],
+    [0, 1, 0, 0, 0],
+    [0, 1, 0, 1, 1],
+    [1, 0, 0, 1, 1],
+  ],
+  "<": [
+    [0, 0, 0, 1, 0],
+    [0, 0, 1, 0, 0],
+    [0, 1, 0, 0, 0],
+    [1, 0, 0, 0, 0],
+    [0, 1, 0, 0, 0],
+    [0, 0, 1, 0, 0],
+    [0, 0, 0, 1, 0],
+  ],
+  ">": [
+    [0, 1, 0, 0, 0],
+    [0, 0, 1, 0, 0],
+    [0, 0, 0, 1, 0],
+    [0, 0, 0, 0, 1],
+    [0, 0, 0, 1, 0],
+    [0, 0, 1, 0, 0],
+    [0, 1, 0, 0, 0],
+  ],
+
+  /* ── Lowercase a-z ── */
+  a: [
+    [0, 0, 0, 0, 0],
+    [0, 0, 0, 0, 0],
+    [0, 1, 1, 1, 0],
+    [0, 0, 0, 0, 1],
+    [0, 1, 1, 1, 1],
+    [1, 0, 0, 0, 1],
+    [0, 1, 1, 1, 1],
+  ],
+  b: [
+    [1, 0, 0, 0, 0],
+    [1, 0, 0, 0, 0],
+    [1, 1, 1, 1, 0],
+    [1, 0, 0, 0, 1],
+    [1, 0, 0, 0, 1],
+    [1, 0, 0, 0, 1],
+    [1, 1, 1, 1, 0],
+  ],
+  c: [
+    [0, 0, 0, 0, 0],
+    [0, 0, 0, 0, 0],
+    [0, 1, 1, 1, 0],
+    [1, 0, 0, 0, 0],
+    [1, 0, 0, 0, 0],
+    [1, 0, 0, 0, 0],
+    [0, 1, 1, 1, 0],
+  ],
+  d: [
+    [0, 0, 0, 0, 1],
+    [0, 0, 0, 0, 1],
+    [0, 1, 1, 1, 1],
+    [1, 0, 0, 0, 1],
+    [1, 0, 0, 0, 1],
+    [1, 0, 0, 0, 1],
+    [0, 1, 1, 1, 1],
+  ],
+  e: [
+    [0, 0, 0, 0, 0],
+    [0, 0, 0, 0, 0],
+    [0, 1, 1, 1, 0],
+    [1, 0, 0, 0, 1],
+    [1, 1, 1, 1, 1],
+    [1, 0, 0, 0, 0],
+    [0, 1, 1, 1, 0],
+  ],
+  f: [
+    [0, 0, 1, 1, 0],
+    [0, 1, 0, 0, 0],
+    [1, 1, 1, 1, 0],
+    [0, 1, 0, 0, 0],
+    [0, 1, 0, 0, 0],
+    [0, 1, 0, 0, 0],
+    [0, 1, 0, 0, 0],
+  ],
+  g: [
+    [0, 0, 0, 0, 0],
+    [0, 0, 0, 0, 0],
+    [0, 1, 1, 1, 1],
+    [1, 0, 0, 0, 1],
+    [0, 1, 1, 1, 1],
+    [0, 0, 0, 0, 1],
+    [0, 1, 1, 1, 0],
+  ],
+  h: [
+    [1, 0, 0, 0, 0],
+    [1, 0, 0, 0, 0],
+    [1, 0, 1, 1, 0],
+    [1, 1, 0, 0, 1],
+    [1, 0, 0, 0, 1],
+    [1, 0, 0, 0, 1],
+    [1, 0, 0, 0, 1],
+  ],
+  i: [
+    [0, 0, 1, 0, 0],
+    [0, 0, 0, 0, 0],
+    [0, 1, 1, 0, 0],
+    [0, 0, 1, 0, 0],
+    [0, 0, 1, 0, 0],
+    [0, 0, 1, 0, 0],
+    [0, 1, 1, 1, 0],
+  ],
+  j: [
+    [0, 0, 0, 1, 0],
+    [0, 0, 0, 0, 0],
+    [0, 0, 1, 1, 0],
+    [0, 0, 0, 1, 0],
+    [0, 0, 0, 1, 0],
+    [1, 0, 0, 1, 0],
+    [0, 1, 1, 0, 0],
+  ],
+  k: [
+    [1, 0, 0, 0, 0],
+    [1, 0, 0, 0, 0],
+    [1, 0, 0, 1, 0],
+    [1, 0, 1, 0, 0],
+    [1, 1, 0, 0, 0],
+    [1, 0, 1, 0, 0],
+    [1, 0, 0, 1, 0],
+  ],
+  l: [
+    [0, 1, 1, 0, 0],
+    [0, 0, 1, 0, 0],
+    [0, 0, 1, 0, 0],
+    [0, 0, 1, 0, 0],
+    [0, 0, 1, 0, 0],
+    [0, 0, 1, 0, 0],
+    [0, 1, 1, 1, 0],
+  ],
+  m: [
+    [0, 0, 0, 0, 0],
+    [0, 0, 0, 0, 0],
+    [1, 1, 0, 1, 0],
+    [1, 0, 1, 0, 1],
+    [1, 0, 1, 0, 1],
+    [1, 0, 0, 0, 1],
+    [1, 0, 0, 0, 1],
+  ],
+  n: [
+    [0, 0, 0, 0, 0],
+    [0, 0, 0, 0, 0],
+    [1, 0, 1, 1, 0],
+    [1, 1, 0, 0, 1],
+    [1, 0, 0, 0, 1],
+    [1, 0, 0, 0, 1],
+    [1, 0, 0, 0, 1],
+  ],
+  o: [
+    [0, 0, 0, 0, 0],
+    [0, 0, 0, 0, 0],
+    [0, 1, 1, 1, 0],
+    [1, 0, 0, 0, 1],
+    [1, 0, 0, 0, 1],
+    [1, 0, 0, 0, 1],
+    [0, 1, 1, 1, 0],
+  ],
+  p: [
+    [0, 0, 0, 0, 0],
+    [0, 0, 0, 0, 0],
+    [1, 1, 1, 1, 0],
+    [1, 0, 0, 0, 1],
+    [1, 1, 1, 1, 0],
+    [1, 0, 0, 0, 0],
+    [1, 0, 0, 0, 0],
+  ],
+  q: [
+    [0, 0, 0, 0, 0],
+    [0, 0, 0, 0, 0],
+    [0, 1, 1, 1, 1],
+    [1, 0, 0, 0, 1],
+    [0, 1, 1, 1, 1],
+    [0, 0, 0, 0, 1],
+    [0, 0, 0, 0, 1],
+  ],
+  r: [
+    [0, 0, 0, 0, 0],
+    [0, 0, 0, 0, 0],
+    [1, 0, 1, 1, 0],
+    [1, 1, 0, 0, 1],
+    [1, 0, 0, 0, 0],
+    [1, 0, 0, 0, 0],
+    [1, 0, 0, 0, 0],
+  ],
+  s: [
+    [0, 0, 0, 0, 0],
+    [0, 0, 0, 0, 0],
+    [0, 1, 1, 1, 1],
+    [1, 0, 0, 0, 0],
+    [0, 1, 1, 1, 0],
+    [0, 0, 0, 0, 1],
+    [1, 1, 1, 1, 0],
+  ],
+  t: [
+    [0, 1, 0, 0, 0],
+    [0, 1, 0, 0, 0],
+    [1, 1, 1, 1, 0],
+    [0, 1, 0, 0, 0],
+    [0, 1, 0, 0, 0],
+    [0, 1, 0, 0, 1],
+    [0, 0, 1, 1, 0],
+  ],
+  u: [
+    [0, 0, 0, 0, 0],
+    [0, 0, 0, 0, 0],
+    [1, 0, 0, 0, 1],
+    [1, 0, 0, 0, 1],
+    [1, 0, 0, 0, 1],
+    [1, 0, 0, 1, 1],
+    [0, 1, 1, 0, 1],
+  ],
+  v: [
+    [0, 0, 0, 0, 0],
+    [0, 0, 0, 0, 0],
+    [1, 0, 0, 0, 1],
+    [1, 0, 0, 0, 1],
+    [1, 0, 0, 0, 1],
+    [0, 1, 0, 1, 0],
+    [0, 0, 1, 0, 0],
+  ],
+  w: [
+    [0, 0, 0, 0, 0],
+    [0, 0, 0, 0, 0],
+    [1, 0, 0, 0, 1],
+    [1, 0, 0, 0, 1],
+    [1, 0, 1, 0, 1],
+    [1, 0, 1, 0, 1],
+    [0, 1, 0, 1, 0],
+  ],
+  x: [
+    [0, 0, 0, 0, 0],
+    [0, 0, 0, 0, 0],
+    [1, 0, 0, 0, 1],
+    [0, 1, 0, 1, 0],
+    [0, 0, 1, 0, 0],
+    [0, 1, 0, 1, 0],
+    [1, 0, 0, 0, 1],
+  ],
+  y: [
+    [0, 0, 0, 0, 0],
+    [0, 0, 0, 0, 0],
+    [1, 0, 0, 0, 1],
+    [1, 0, 0, 0, 1],
+    [0, 1, 1, 1, 1],
+    [0, 0, 0, 0, 1],
+    [0, 1, 1, 1, 0],
+  ],
+  z: [
+    [0, 0, 0, 0, 0],
+    [0, 0, 0, 0, 0],
+    [1, 1, 1, 1, 1],
+    [0, 0, 0, 1, 0],
+    [0, 0, 1, 0, 0],
+    [0, 1, 0, 0, 0],
+    [1, 1, 1, 1, 1],
+  ],
+};
+
+/* ═══════════════════════════════════════
+   Stamp text into Set<"gx,gy"> keys
+   ═══════════════════════════════════════ */
+export function stampText(
+  text: string,
+  startGX: number,
+  startGY: number,
+): Set<string> {
+  const set = new Set<string>();
+  let cx = startGX;
+  for (const ch of text) {
+    const glyph = FONT[ch];
+    if (!glyph) {
+      cx += 4; /* unknown char: skip like a space */
+      continue;
+    }
+    for (let row = 0; row < glyph.length; row++) {
+      for (let col = 0; col < glyph[row].length; col++) {
+        if (glyph[row][col]) set.add(`${cx + col},${startGY + row}`);
+      }
+    }
+    cx += glyph[0].length + 1; /* char width + 1 col gap */
+  }
+  return set;
+}
+
+/* Measure pixel-width (in grid columns) of a text string */
+export function textPixelWidth(text: string): number {
+  let w = 0;
+  for (const ch of text) {
+    const g = FONT[ch];
+    w += g ? g[0].length + 1 : 4;
+  }
+  return w > 0 ? w - 1 : 0; /* subtract trailing gap */
+}
+
+/* ═══════════════════════════════════════
+   Stamp multiple lines, centered on the grid.
+   Blank lines ("") add vertical space but no pixels.
+   Returns Set of "gx,gy" keys for lit blocks.
+   ═══════════════════════════════════════ */
+export function stampLines(
+  lines: string[],
+  cols: number,
+  rows: number,
+  lineStep: number = 9, /* 7 rows char + 2 rows gap */
+): Set<string> {
+  const totalH = lines.length * lineStep - (lineStep - 7); /* last line: no bottom gap */
+  const startYBase = Math.max(0, Math.floor((rows - totalH) / 2));
+  const result = new Set<string>();
+
+  for (let i = 0; i < lines.length; i++) {
+    const line = lines[i];
+    if (!line) continue; /* blank spacer line */
+
+    const lineWidth = textPixelWidth(line);
+    const startGX = Math.max(0, Math.floor((cols - lineWidth) / 2));
+    const startGY = startYBase + i * lineStep;
+
+    const lineSet = stampText(line, startGX, startGY);
+    lineSet.forEach((key) => result.add(key));
+  }
+
+  return result;
+}
+
+/* ═══════════════════════════════════════
+   Scaled variants — each font pixel becomes
+   a scale×scale block of grid cells.
+   Used for hero section with big letters.
+   ═══════════════════════════════════════ */
+export function stampTextScaled(
+  text: string,
+  startGX: number,
+  startGY: number,
+  scale: number,
+): Set<string> {
+  const set = new Set<string>();
+  let cx = startGX;
+  for (const ch of text) {
+    const glyph = FONT[ch];
+    if (!glyph) {
+      cx += 4 * scale;
+      continue;
+    }
+    for (let row = 0; row < glyph.length; row++) {
+      for (let col = 0; col < glyph[row].length; col++) {
+        if (glyph[row][col]) {
+          for (let sy = 0; sy < scale; sy++) {
+            for (let sx = 0; sx < scale; sx++) {
+              set.add(
+                `${cx + col * scale + sx},${startGY + row * scale + sy}`,
+              );
+            }
+          }
+        }
+      }
+    }
+    cx += (glyph[0].length + 1) * scale;
+  }
+  return set;
+}
+
+export function textPixelWidthScaled(
+  text: string,
+  scale: number,
+): number {
+  let w = 0;
+  for (const ch of text) {
+    const g = FONT[ch];
+    w += g ? (g[0].length + 1) * scale : 4 * scale;
+  }
+  return w > 0 ? w - scale : 0;
+}
+
+export function stampLinesScaled(
+  lines: string[],
+  cols: number,
+  rows: number,
+  scale: number,
+  lineStep?: number,
+): Set<string> {
+  const charH = 7 * scale;
+  const ls = lineStep ?? charH + 2 * scale;
+  const totalH = lines.length * ls - (ls - charH);
+  const startYBase = Math.max(0, Math.floor((rows - totalH) / 2));
+  const result = new Set<string>();
+
+  for (let i = 0; i < lines.length; i++) {
+    const line = lines[i];
+    if (!line) continue;
+    const lineWidth = textPixelWidthScaled(line, scale);
+    const startGX = Math.max(0, Math.floor((cols - lineWidth) / 2));
+    const startGY = startYBase + i * ls;
+    const lineSet = stampTextScaled(line, startGX, startGY, scale);
+    lineSet.forEach((key) => result.add(key));
+  }
+
+  return result;
+}
+
+/* ═══════════════════════════════════════
+   Scaled stamping — CENTER CELL ONLY
+   Each font pixel maps to just the center cell of its
+   scale×scale block. Used for hero section to render
+   one big circle per font pixel (like entry screen).
+   ═══════════════════════════════════════ */
+export function stampTextScaledCenters(
+  text: string,
+  startGX: number,
+  startGY: number,
+  scale: number,
+): Set<string> {
+  const set = new Set<string>();
+  let cx = startGX;
+  const half = Math.floor(scale / 2);
+  for (const ch of text) {
+    const glyph = FONT[ch];
+    if (!glyph) {
+      cx += 4 * scale;
+      continue;
+    }
+    for (let row = 0; row < glyph.length; row++) {
+      for (let col = 0; col < glyph[row].length; col++) {
+        if (glyph[row][col]) {
+          set.add(
+            `${cx + col * scale + half},${startGY + row * scale + half}`,
+          );
+        }
+      }
+    }
+    cx += (glyph[0].length + 1) * scale;
+  }
+  return set;
+}
+
+export function stampLinesScaledCenters(
+  lines: string[],
+  cols: number,
+  rows: number,
+  scale: number,
+  lineStep?: number,
+): Set<string> {
+  const charH = 7 * scale;
+  const ls = lineStep ?? charH + 2 * scale;
+  const totalH = lines.length * ls - (ls - charH);
+  /* Snap to nearest multiple of `scale` so center-dots align with the
+     heroScale ambient grid (both use offset = floor(scale/2)). Without
+     this, text dots and pond dots interleave → visible double layer. */
+  const startYBase = Math.max(0, Math.round((rows - totalH) / 2 / scale) * scale);
+  const result = new Set<string>();
+
+  for (let i = 0; i < lines.length; i++) {
+    const line = lines[i];
+    if (!line) continue;
+    const lineWidth = textPixelWidthScaled(line, scale);
+    const startGX = Math.max(0, Math.round((cols - lineWidth) / 2 / scale) * scale);
+    const startGY = startYBase + i * ls;
+    const lineSet = stampTextScaledCenters(line, startGX, startGY, scale);
+    lineSet.forEach((key) => result.add(key));
+  }
+
+  return result;
+}
+
+/* ═══════════════════════════════════════
+   Scaled stamping — TEXT REGION
+   Marks the center cell of EVERY position within
+   character bounding boxes (both on AND off pixels).
+   Used to exclude ambient grid dots from the text
+   area so letter shapes remain visible.
+   ═══════════════════════════════════════ */
+function stampTextScaledRegion(
+  text: string,
+  startGX: number,
+  startGY: number,
+  scale: number,
+): Set<string> {
+  const set = new Set<string>();
+  let cx = startGX;
+  const half = Math.floor(scale / 2);
+  for (const ch of text) {
+    const glyph = FONT[ch];
+    if (!glyph) {
+      cx += 4 * scale;
+      continue;
+    }
+    for (let row = 0; row < glyph.length; row++) {
+      for (let col = 0; col < glyph[row].length; col++) {
+        /* Mark ALL positions — on and off pixels alike */
+        set.add(
+          `${cx + col * scale + half},${startGY + row * scale + half}`,
+        );
+      }
+    }
+    cx += (glyph[0].length + 1) * scale;
+  }
+  return set;
+}
+
+export function stampLinesScaledRegion(
+  lines: string[],
+  cols: number,
+  rows: number,
+  scale: number,
+  lineStep?: number,
+): Set<string> {
+  const charH = 7 * scale;
+  const ls = lineStep ?? charH + 2 * scale;
+  const totalH = lines.length * ls - (ls - charH);
+  const startYBase = Math.max(0, Math.round((rows - totalH) / 2 / scale) * scale);
+  const result = new Set<string>();
+
+  for (let i = 0; i < lines.length; i++) {
+    const line = lines[i];
+    if (!line) continue;
+    const lineWidth = textPixelWidthScaled(line, scale);
+    const startGX = Math.max(0, Math.round((cols - lineWidth) / 2 / scale) * scale);
+    const startGY = startYBase + i * ls;
+    const lineSet = stampTextScaledRegion(line, startGX, startGY, scale);
+    lineSet.forEach((key) => result.add(key));
+  }
+
+  return result;
+}
+
+```
+
+### File: app/components/sections/AboutSection.tsx
+```tsx
+import type { SectionConfig } from "./types";
+import "./about-section.css";
+
+const AboutSection: SectionConfig = {
+  label: "01 // about",
+  lines: [
+    "// about",
+    "",
+    "3+ years building production",
+    "web applications end-to-end.",
+    "",
+    "clinical AI tools with MCP",
+    "servers and RAG pipelines.",
+    "",
+    "SaaS platforms — 2,400+ users.",
+    "e-commerce — 12k+ SKUs.",
+    "",
+    "docker, kubernetes, terraform,",
+    "AWS across the full lifecycle.",
+    "",
+    "MS Computer Science — Purdue.",
+  ],
+  fontSizeBase: 17,
+  lineHeight: 1.6,
+  letterSpacing: 1,
+};
+
+export default AboutSection;
+
+```
+
+### File: app/components/sections/ContactSection.tsx
+```tsx
+import type { SectionConfig } from "./types";
+import "./contact-section.css";
+
+const ContactSection: SectionConfig = {
+  label: "05 // contact",
+  lines: [
+    "// let's connect",
+    "",
+    "kkalyankumar.dev@gmail.com",
+    "",
+    "github.com/kalyankumar",
+    "linkedin.com/in/kalyankumar",
+    "",
+    "morganville, NJ",
+    "",
+    "// available for opportunities",
+  ],
+  fontSizeBase: 19,
+  lineHeight: 1.8,
+  letterSpacing: 2,
+};
+
+export default ContactSection;
+
+```
+
+### File: app/components/sections/ExperienceSection.tsx
+```tsx
+"use client";
+
+import { useRef, useEffect, useState, useCallback, useMemo } from "react";
+import anime from "animejs";
+import { gsap } from "gsap";
+import { Draggable } from "gsap/dist/Draggable";
+import { interpolate } from "flubber";
+import { stampText, textPixelWidth } from "../pixel-font";
+import { playClockTick, initAudio } from "../clock-tick";
+import "./experience-section.css";
+
+/* ═══════════════════════════════════════
+   SVG Morphing Paths (100x100 viewBox)
+   ═══════════════════════════════════════ */
+const charPaths: Record<string, string> = {
+  "C": "M 80 20 L 60 20 L 60 40 L 40 40 L 40 60 L 60 60 L 60 80 L 80 80 L 80 100 L 20 100 L 20 0 L 80 0 Z",
+  "A": "M 40 0 L 60 0 L 100 100 L 80 100 L 70 70 L 30 70 L 20 100 L 0 100 Z M 50 20 L 35 55 L 65 55 Z",
+  "R": "M 20 0 L 70 0 C 85 0 95 10 95 30 C 95 50 85 60 70 60 L 50 60 L 85 100 L 60 100 L 40 60 L 40 100 L 20 100 Z M 40 20 L 40 40 L 65 40 C 70 40 75 35 75 30 C 75 25 70 20 65 20 Z",
+  "E": "M 20 0 L 80 0 L 80 20 L 40 20 L 40 40 L 70 40 L 70 60 L 40 60 L 40 80 L 80 80 L 80 100 L 20 100 Z",
+  "&": "M 80 90 L 95 100 L 70 75 C 80 65 85 50 80 35 C 75 15 50 5 35 20 C 20 35 20 65 35 80 C 50 95 70 95 80 90 Z M 45 35 C 55 25 60 35 55 45 C 50 55 40 50 45 35 Z M 45 70 C 35 60 35 50 45 45 C 55 40 65 60 55 70 C 45 80 40 70 45 70 Z",
+  "P": "M 20 0 L 70 0 C 90 0 100 15 100 35 C 100 55 90 70 70 70 L 40 70 L 40 100 L 20 100 Z M 40 20 L 40 50 L 65 50 C 75 50 80 45 80 35 C 80 25 75 20 65 20 Z",
+  "I": "M 40 0 L 60 0 L 60 100 L 40 100 Z",
+  "N": "M 20 0 L 40 0 L 70 60 L 70 0 L 90 0 L 90 100 L 70 100 L 40 40 L 40 100 L 20 100 Z",
+  "X": "M 10 0 L 35 0 L 50 40 L 65 0 L 90 0 L 65 50 L 90 100 L 65 100 L 50 60 L 35 100 L 10 100 L 35 50 Z",
+};
+
+const shapePaths = [
+  "M 50 0 C 77 0 100 23 100 50 C 100 77 77 100 50 100 C 23 100 0 77 0 50 C 0 23 23 0 50 0 Z", /* Circle */
+  "M 10 10 L 90 10 L 90 90 L 10 90 Z", /* Square */
+  "M 50 10 L 90 90 L 10 90 Z", /* Triangle */
+  "M 50 0 L 100 50 L 50 100 L 0 50 Z", /* Diamond */
+  "M 50 0 L 65 35 L 100 35 L 70 60 L 80 100 L 50 75 L 20 100 L 30 60 L 0 35 L 35 35 Z", /* Star */
+];
+
+/* ═══════════════════════════════════════
+   Career data
+   ═══════════════════════════════════════ */
+interface CareerEntry {
+  year: string;
+  company: string;
+  role: string;
+  roleMarquee: string;
+  description: string;
+  bullets: string[];
+  videoSrc?: string;
+}
+
+const CAREER: CareerEntry[] = [
+  {
+    year: "2025",
+    company: "MEDICAL INFORMATICS ENGINEERING",
+    role: "Software Engineer Intern",
+    roleMarquee: "INTERNSHIP",
+    description:
+      "Medical Informatics Engineering (MIE) builds healthcare IT solutions, evolving from ambulatory EHRs to specialized digital health platforms, driving innovation in clinical data and modern care systems since 1995.",
+    bullets: [
+      "Architected 3 MCP servers with 28 medical tools for clinical data retrieval",
+      "Implemented BioClinicalBERT NER pipeline for medical entity extraction",
+      "Built patient analytics dashboard in React with real-time visualizations",
+      "Deployed 6 Docker services with Kubernetes autoscaler written in Go",
+      "Reduced query response time from 4.8s to 1.2s with Redis caching layer",
+      "Achieved 92% accuracy on clinical entity extraction benchmarks",
+    ],
+    videoSrc: "/MIE.mp4",
+  },
+  {
+    year: "2024",
+    company: "PURDUE UNIVERSITY",
+    role: "Master of Science in Computer Science",
+    roleMarquee: "EDUCATION",
+    description:
+      "Purdue University Fort Wayne offers a prestigious Purdue degree within a dynamic metropolitan setting. Recognized for its top-tier College of Engineering, Technology, and Computer Science, PFW combines rigorous STEM academics with the personalized mentorship of a small-campus environment.",
+    bullets: [
+      "Engineered an AWS serverless event pipeline utilizing Go Lambdas, API Gateway, and DynamoDB",
+      "Designed a distributed Go job scheduler handling 1,200 jobs/min with zero drops",
+      "Developed a full-stack Next.js and Go e-commerce storefront achieving a 98.5 Lighthouse score",
+      "Built a GraphQL search application delivering infinite scroll and sub-100ms response times",
+    ],
+    videoSrc: "/PFW.mp4",
+  },
+  {
+    year: "2023",
+    company: "ACCENTURE",
+    role: "Software Engineer",
+    roleMarquee: "FULL-TIME",
+    description:
+      "Led frontend development for a SaaS platform serving 2,400+ enterprise users. Built the React/TypeScript frontend from the ground up and implemented 14 REST endpoints with Spring Boot on the backend.",
+    bullets: [
+      "Built SaaS platform frontend with React/TypeScript from scratch",
+      "Implemented 14 REST API endpoints with Spring Boot backend",
+      "Reduced page load time from 4.2s to 1.6s through code splitting",
+      "Achieved 87% test coverage before first production deploy",
+      "Mentored 3 junior developers on React best practices",
+    ],
+    videoSrc: "/accenture.mp4",
+  },
+  {
+    year: "2021",
+    company: "ACCENTURE",
+    role: "Associate Software Engineer",
+    roleMarquee: "FULL-TIME",
+    description:
+      "Built the checkout and catalog system for a retail e-commerce platform handling 12,000+ SKUs. Integrated Stripe payments and optimized page performance significantly.",
+    bullets: [
+      "Developed checkout flow with Stripe payment integration",
+      "Built product catalog system managing 12,000+ SKUs",
+      "Reduced page load from 3.8s to 2.3s with lazy loading",
+      "Wrote 140+ tests across cart, catalog, and payment modules",
+      "Collaborated with UX team on responsive mobile-first design",
+    ],
+    videoSrc: "/accenture.mp4",
+  },
+  {
+    year: "2019",
+    company: "FREELANCE",
+    role: "Web Developer",
+    roleMarquee: "FREELANCE",
+    description:
+      "Started professional development journey building websites and web applications for local businesses. Gained foundational skills in HTML, CSS, JavaScript, and React.",
+    bullets: [
+      "Built 8+ responsive websites for local businesses",
+      "Learned React and began building single-page applications",
+      "Implemented SEO optimizations improving search rankings by 40%",
+      "Managed client relationships and project timelines",
+    ],
+  },
+];
+
+const YEARS = CAREER.map((c) => c.year);
+
+/* ═══════════════════════════════════════
+   Zigzag year positions (percentage → grid)
+   ═══════════════════════════════════════ */
+const YEAR_POSITIONS: { year: string; xPct: number; yPct: number }[] = [
+  { year: "2025", xPct: 0.15, yPct: 0.15 },
+  { year: "2024", xPct: 0.85, yPct: 0.35 },
+  { year: "2023", xPct: 0.20, yPct: 0.55 },
+  { year: "2021", xPct: 0.70, yPct: 0.75 },
+  { year: "2019", xPct: 0.15, yPct: 0.90 },
+];
+
+/* ═══════════════════════════════════════
+   Component
+   ═══════════════════════════════════════ */
+export default function ExperienceSection() {
+  const sectionRef = useRef<HTMLElement>(null);
+  const canvasRef = useRef<HTMLCanvasElement>(null);
+  const glowRef = useRef<HTMLDivElement>(null);
+  const marqueeRef = useRef<HTMLDivElement>(null);
+  const zigzagPathRef = useRef<SVGPathElement>(null);
+  const zigzagGlowRef = useRef<SVGPathElement>(null);
+
+  const [activeYear, setActiveYear] = useState<string | null>(null);
+  const [revealedYears, setRevealedYears] = useState<Set<string>>(new Set());
+  const revealedYearsRef = useRef<Set<string>>(new Set());
+
+  // Keep ref in sync for the scroll listener without remounting
+  useEffect(() => {
+    revealedYearsRef.current = revealedYears;
+    // Dispatch scroll to force line update when a year is revealed
+    window.dispatchEvent(new CustomEvent("scroll"));
+  }, [revealedYears]);
+
+  const [isActive, setIsActive] = useState(false);
+
+  const mouseRef = useRef({ x: -9999, y: -9999 });
+  const rafRef = useRef(0);
+  const yearElsRef = useRef<Map<string, HTMLDivElement>>(new Map());
+  const cardElsRef = useRef<Map<string, HTMLDivElement>>(new Map());
+  const convergeDoneRef = useRef(false);
+  const disperseStartRef = useRef<number>(0);
+  const disperseOriginRef = useRef({ x: -1, y: -1 });
+  const zigzagPointsRef = useRef<{ x: number; y: number }[]>([]);
+  const zigzagLineStartRef = useRef<number>(0);
+
+  /* ── Computed pixel positions for year markers (matches canvas grid exactly) ── */
+  const yearPixelPositions = useMemo(() => {
+    if (!isActive) return new Map<string, { x: number; y: number }>();
+    if (!sectionRef.current) return new Map<string, { x: number; y: number }>();
+    const W = sectionRef.current.clientWidth || window.innerWidth;
+    const MathH = Math.max(sectionRef.current.clientHeight, window.innerHeight * 4);
+    const blockSize = W < 600 ? 14 : W < 1024 ? 18 : 22;
+    const gap = W < 600 ? 2 : 3;
+    const stp = blockSize + gap;
+    const c = Math.floor(W / stp);
+    const r = Math.floor(MathH / stp);
+    const ox = (W - c * stp + gap) / 2;
+    const oy = (MathH - r * stp + gap) / 2;
+    const hf = blockSize / 2;
+    const map = new Map<string, { x: number; y: number }>();
+    for (const yp of YEAR_POSITIONS) {
+      map.set(yp.year, {
+        x: ox + Math.floor(yp.xPct * c) * stp + hf,
+        y: oy + Math.floor(yp.yPct * r) * stp + hf,
+      });
+    }
+    return map;
+  }, [isActive]);
+
+  /* ── Scroll-based activation ──
+     Activate when ~0.35 viewports scrolled (exactly as hero text fades and converges). */
+  useEffect(() => {
+    const H = window.innerHeight;
+    const handleScroll = () => {
+      const scrollY = window.scrollY;
+      const threshold = H * 0.35;
+      if (scrollY >= threshold && !isActive) {
+        setIsActive(true);
+      } else if (scrollY < threshold && isActive) {
+        setIsActive(false);
+      }
+
+      // Animate zigzag line based on scroll progress within the section
+      if (sectionRef.current && zigzagPathRef.current && zigzagGlowRef.current) {
+        const rect = sectionRef.current.getBoundingClientRect();
+        // rect.top is relative to viewport. If it's <= 0, we're inside or past it.
+        const scrollProgress = Math.max(0, Math.min(1, -rect.top / (rect.height - H)));
+
+        let maxAllowed = 0;
+        
+        /* Do not allow the line to draw AT ALL until the dots have finished their initial divergence 
+           explosion. Divergence ends exactly at scrollY = H * 1.4 (activation 1.0 + range 0.4). */
+        if (scrollY >= H * 1.4) {
+          if (revealedYearsRef.current.has("2025")) {
+            maxAllowed = 0.25; // allowed to draw to 2024
+            if (revealedYearsRef.current.has("2024")) {
+              maxAllowed = 0.50; // allowed to draw to 2023
+              if (revealedYearsRef.current.has("2023")) {
+                maxAllowed = 0.75; // allowed to draw to 2021
+                if (revealedYearsRef.current.has("2021")) {
+                  maxAllowed = 1.0; // allowed to draw to 2019
+                }
+              }
+            }
+          }
+        }
+
+        const allowedProgress = Math.min(scrollProgress, maxAllowed);
+
+        try {
+          const totalLength = zigzagPathRef.current.getTotalLength();
+          zigzagPathRef.current.style.strokeDasharray = `${totalLength}`;
+          zigzagPathRef.current.style.strokeDashoffset = `${totalLength * (1 - allowedProgress)}`;
+
+          zigzagGlowRef.current.style.strokeDasharray = `${totalLength}`;
+          zigzagGlowRef.current.style.strokeDashoffset = `${totalLength * (1 - allowedProgress)}`;
+        } catch (e) { }
+      }
+    };
+    window.addEventListener("scroll", handleScroll, { passive: true });
+    handleScroll();
+    return () => window.removeEventListener("scroll", handleScroll);
+  }, [isActive]);
+
+  /* ── Mouse / touch tracking ── */
+  useEffect(() => {
+    // Track viewport coordinates independently of scroll
+    let cx = -9999;
+    let cy = -9999;
+    const updateLocalMouse = () => {
+      if (!sectionRef.current || cx === -9999) return;
+      const rect = sectionRef.current.getBoundingClientRect();
+      mouseRef.current = { x: cx - rect.left, y: cy - rect.top };
+    };
+    const handleMouse = (e: MouseEvent) => {
+      cx = e.clientX;
+      cy = e.clientY;
+      updateLocalMouse();
+    };
+    const handleTouch = (e: TouchEvent) => {
+      const t = e.touches[0];
+      if (t) {
+        cx = t.clientX;
+        cy = t.clientY;
+        updateLocalMouse();
+      }
+    };
+    window.addEventListener("mousemove", handleMouse);
+    window.addEventListener("touchmove", handleTouch, { passive: true });
+    window.addEventListener("scroll", updateLocalMouse, { passive: true });
+    return () => {
+      window.removeEventListener("mousemove", handleMouse);
+      window.removeEventListener("touchmove", handleTouch);
+      window.removeEventListener("scroll", updateLocalMouse);
+    };
+  }, []);
+
+  /* ── Dot grid canvas + flashlight + hidden years ── */
+  useEffect(() => {
+    if (!isActive) {
+      disperseStartRef.current = 0;
+      return;
+    }
+
+    const canvas = canvasRef.current;
+    const section = sectionRef.current;
+    if (!canvas || !section) {
+      disperseStartRef.current = 0;
+      return;
+    }
+
+    /* Record dispersion origin — prefer the converged dot position from ParticleCanvas */
+    disperseStartRef.current = performance.now();
+    const rect = section.getBoundingClientRect();
+    const convergedPos = (window as any).__convergedDotPos;
+    if (convergedPos?.active) {
+      /* The convergedPos.y is an absolute document coordinate.
+         We subtract the section's absolute document coordinate (rect.top + window.scrollY) 
+         to get the precise relative Y position within the ExperienceSection canvas. */
+      const sectionAbsoluteY = rect.top + window.scrollY;
+      disperseOriginRef.current = {
+        x: convergedPos.x - rect.left,
+        y: convergedPos.y - sectionAbsoluteY,
+      };
+      convergedPos.active = false; /* consumed */
+    } else {
+      disperseOriginRef.current = {
+        x: mouseRef.current.x > -9000
+          ? mouseRef.current.x
+          : window.innerWidth / 2 - rect.left,
+        y: mouseRef.current.y > -9000
+          ? mouseRef.current.y
+          : window.innerHeight / 2 - rect.top,
+      };
+    }
+
+    const W = section.clientWidth || window.innerWidth;
+    const scrollH = window.innerHeight * 4; /* 4.0x viewport height to give massive map scroll space */
+    const H = Math.max(section.clientHeight, scrollH);
+    const dpr = Math.min(window.devicePixelRatio || 1, 2);
+
+    canvas.width = W * dpr;
+    canvas.height = H * dpr;
+    canvas.style.width = `${W}px`;
+    canvas.style.height = `${H}px`;
+
+    const ctx = canvas.getContext("2d")!;
+    ctx.scale(dpr, dpr);
+
+    /* Grid sizing (matches entry screen) */
+    const blockSize = W < 600 ? 14 : W < 1024 ? 18 : 22;
+    const gap = W < 600 ? 2 : 3;
+    const step = blockSize + gap;
+    const cols = Math.floor(W / step);
+    const rows = Math.floor(H / step);
+    const oX = (W - cols * step + gap) / 2;
+    const oY = (H - rows * step + gap) / 2;
+    const N = cols * rows;
+    const half = blockSize / 2;
+
+    /* Pre-render circle sprite */
+    const spriteSize = blockSize + 2;
+    const sprite = document.createElement("canvas");
+    sprite.width = spriteSize * dpr;
+    sprite.height = spriteSize * dpr;
+    const sctx = sprite.getContext("2d")!;
+    sctx.scale(dpr, dpr);
+    sctx.fillStyle = "#ffffff";
+    sctx.beginPath();
+    sctx.arc(spriteSize / 2, spriteSize / 2, half, 0, Math.PI * 2);
+    sctx.fill();
+
+    /* Stamp year numbers into grid */
+    const yearStamps: Map<string, Set<string>> = new Map();
+    const allYearDots = new Set<string>();
+
+    for (const yp of YEAR_POSITIONS) {
+      const yw = textPixelWidth(yp.year);
+      const yh = 7;
+      const gx = Math.max(
+        0,
+        Math.min(cols - yw - 1, Math.floor(yp.xPct * cols) - Math.floor(yw / 2)),
+      );
+      const gy = Math.max(
+        0,
+        Math.min(rows - yh - 1, Math.floor(yp.yPct * rows) - Math.floor(yh / 2)),
+      );
+      const stamp = stampText(yp.year, gx, gy);
+      yearStamps.set(yp.year, stamp);
+      stamp.forEach((k) => allYearDots.add(k));
+    }
+
+    /* Fast lookup arrays */
+    const isYearDot = new Uint8Array(N);
+    for (const [, stamp] of yearStamps) {
+      stamp.forEach((key) => {
+        const [gxS, gyS] = key.split(",");
+        const idx = Number(gyS) * cols + Number(gxS);
+        if (idx >= 0 && idx < N) isYearDot[idx] = 1;
+      });
+    }
+
+    /* Glow state */
+    const glows = new Float32Array(N);
+    const pulseStart = new Float32Array(N); /* timestamp when pulse begins */
+    const PULSE_DUR = 600; /* ms for one pulse up+down */
+
+    /* Directional wave state */
+    let prevMx = -9999;
+    let prevMy = -9999;
+    let cursorStoppedFrames = 0;
+    let waveActive = false;
+    const WAVE_SPEED = 0.4; /* px per ms — how fast the wave front travels */
+    const RADIUS = 180;
+    const R2 = RADIUS * RADIUS;
+    const INV_R = 1 / RADIUS;
+
+    let lastTickX = -9999;
+    let lastTickY = -9999;
+    let lastTickTime = 0;
+    const halfSprite = spriteSize / 2;
+
+    /* Year proximity tracking */
+    const yearProximity = new Map<string, number>();
+    YEARS.forEach((y) => yearProximity.set(y, 0));
+
+    /* RAF loop */
+    const tick = () => {
+      if (!canvasRef.current) return;
+
+      const mx = mouseRef.current.x;
+      const my = mouseRef.current.y;
+
+      /* Decay all glows */
+      for (let i = 0; i < N; i++) {
+        if (glows[i] > 0.005) glows[i] *= 0.6;
+        else glows[i] = 0;
+      }
+
+      /* Use targetMap to accumulate targets before applying to glows */
+      const targetMap = new Float32Array(N);
+
+      /* Light up cells near cursor */
+      const gxC = Math.floor((mx - oX) / step);
+      const gyC = Math.floor((my - oY) / step);
+      const cellRad = Math.ceil(RADIUS / step) + 1;
+      const gxMin = Math.max(0, gxC - cellRad);
+      const gxMax = Math.min(cols - 1, gxC + cellRad);
+      const gyMin = Math.max(0, gyC - cellRad);
+      const gyMax = Math.min(rows - 1, gyC + cellRad);
+
+      for (let gy = gyMin; gy <= gyMax; gy++) {
+        for (let gx = gxMin; gx <= gxMax; gx++) {
+          const idx = gy * cols + gx;
+          const px = oX + gx * step + half;
+          const py = oY + gy * step + half;
+          const dx = px - mx;
+          const dy = py - my;
+          const d2 = dx * dx + dy * dy;
+          if (d2 <= R2) {
+            const dist = Math.sqrt(d2);
+            /* Quadratic falloff for ambient dots */
+            const falloff = Math.max(0, 1 - dist * INV_R);
+            let baseTarget = falloff * falloff;
+
+            /* Year dot proximity hint — matches entry screen K behavior:
+               use linear falloff (much brighter) so year digits POP
+               against the dimmer quadratic ambient dots */
+            if (isYearDot[idx] && dist < 130) {
+              baseTarget = Math.max(baseTarget, falloff * 0.9);
+            }
+
+            if (baseTarget > targetMap[idx]) {
+              targetMap[idx] = baseTarget;
+            }
+          }
+        }
+      }
+
+      /* Directional wave: when cursor moves, launch a wave in movement direction.
+         Dots ahead of cursor (in movement direction) pulse with delay proportional
+         to their distance along that direction. Wave travels to screen edge. */
+      {
+        const velX = mx - prevMx;
+        const velY = my - prevMy;
+        const speed = Math.sqrt(velX * velX + velY * velY);
+
+        if (speed > 3) {
+          /* Cursor is moving — launch a new wave */
+          cursorStoppedFrames = 0;
+          if (!waveActive) waveActive = true;
+
+          /* Normalize direction */
+          const dirX = velX / speed;
+          const dirY = velY / speed;
+
+          const now = performance.now();
+
+          /* Project every dot onto the movement direction from cursor position.
+             Only dots in the forward half (positive projection) get pulsed.
+             Delay = projected distance / wave speed */
+          for (let i = 0; i < N; i++) {
+            const gx = i % cols;
+            const gy = Math.floor(i / cols);
+            const px = oX + gx * step + half;
+            const py = oY + gy * step + half;
+            const toX = px - mx;
+            const toY = py - my;
+
+            /* Project onto direction vector */
+            const proj = toX * dirX + toY * dirY;
+
+            /* Only forward dots (positive projection), skip dots behind cursor */
+            if (proj > 0 && proj < 1200) {
+              /* Perpendicular distance — only pulse dots within a band */
+              const perp = Math.abs(toX * (-dirY) + toY * dirX);
+              if (perp < RADIUS * 1.5) {
+                /* Skip dots already mid-pulse */
+                if (pulseStart[i] > 0) {
+                  const el = now - pulseStart[i];
+                  if (el >= 0 && el < PULSE_DUR) continue;
+                }
+                /* Delay based on distance along wave direction */
+                pulseStart[i] = now + proj / WAVE_SPEED;
+              }
+            }
+          }
+        } else {
+          cursorStoppedFrames++;
+          if (cursorStoppedFrames > 10) {
+            waveActive = false;
+          }
+        }
+
+        prevMx = mx;
+        prevMy = my;
+      }
+
+
+
+      /* Apply target map to actual glows — snap-fast lerp matching entry screen */
+      for (let i = 0; i < N; i++) {
+        if (targetMap[i] > glows[i]) {
+          glows[i] += (targetMap[i] - glows[i]) * 0.55;
+        }
+      }
+
+      /* Year proximity auto-reveal */
+      for (const yp of YEAR_POSITIONS) {
+        const stamp = yearStamps.get(yp.year)!;
+        let litCount = 0;
+        let totalCount = 0;
+        stamp.forEach((key) => {
+          const [gxS, gyS] = key.split(",");
+          const idx = Number(gyS) * cols + Number(gxS);
+          if (idx >= 0 && idx < N) {
+            totalCount++;
+            if (glows[idx] > 0.15) litCount++;
+          }
+        });
+        const ratio = totalCount > 0 ? litCount / totalCount : 0;
+        if (ratio > 0.15) {
+          setRevealedYears((prev) => {
+            if (prev.has(yp.year)) return prev;
+            const next = new Set(prev);
+            next.add(yp.year);
+            return next;
+          });
+        }
+      }
+
+      /* Clock tick sound near year dots */
+      const tickNow = performance.now();
+      if (tickNow - lastTickTime > 80) {
+        const tdx = mx - lastTickX;
+        const tdy = my - lastTickY;
+        if (tdx * tdx + tdy * tdy > step * step) {
+          let nearYear = false;
+          for (let sdy = -3; sdy <= 3 && !nearYear; sdy++) {
+            for (let sdx = -3; sdx <= 3; sdx++) {
+              if (allYearDots.has(`${gxC + sdx},${gyC + sdy}`)) {
+                nearYear = true;
+                break;
+              }
+            }
+          }
+          if (nearYear) {
+            playClockTick();
+            lastTickX = mx;
+            lastTickY = my;
+            lastTickTime = tickNow;
+          }
+        }
+      }
+
+      /* Scroll-linked divergence: dots stay at converged point, then release as user scrolls further.
+         divergeProgress: 0 = all dots at origin, 1 = all dots at their grid positions.
+         Maps scrollY from activation threshold to threshold + 0.35*H 
+         We delay activation until the section is fully in focus (reaches the top of viewport) */
+      const activationThreshold = window.innerHeight * 1.0; 
+      const divergeRange = window.innerHeight * 0.4; /* dots fully released after scrolling another 0.4 viewports */
+      const scrollPastThreshold = window.scrollY - activationThreshold;
+      const divergeProgress = Math.min(1, Math.max(0, scrollPastThreshold / divergeRange));
+      
+      /* Dynamically track the current mouse position. This ensures the dots release 
+         from exactly where the cursor is right now (the converged dot follows the cursor). */
+      const origX = mx;
+      const origY = my;
+
+      /* Clear & draw */
+      ctx.clearRect(0, 0, W, H);
+      const drawNow = performance.now();
+      
+      /* Draw the converged dot holding at the cursor if we haven't fully diverged */
+      if (divergeProgress < 1) {
+        /* Once divergence hits 1, the holding dot fades out completely */
+        const holdDotAlpha = 1 - divergeProgress;
+        const pulseScale = 1 + 0.15 * Math.sin(drawNow / 200);
+        const holdSize = 10 * pulseScale;
+        
+        ctx.save();
+        ctx.globalAlpha = holdDotAlpha;
+        ctx.fillStyle = '#ffffff';
+        ctx.beginPath();
+        ctx.arc(origX, origY, holdSize / 2, 0, Math.PI * 2);
+        ctx.fill();
+        ctx.globalAlpha = holdDotAlpha * 0.3;
+        ctx.beginPath();
+        ctx.arc(origX, origY, holdSize * 1.5, 0, Math.PI * 2);
+        ctx.fill();
+        ctx.restore();
+      }
+
+      for (let i = 0; i < N; i++) {
+        if (glows[i] > 0.005 || divergeProgress < 1) {
+          const gx = i % cols;
+          const gy = Math.floor(i / cols);
+          let px = oX + gx * step + half;
+          let py = oY + gy * step + half;
+
+          let alphaMult = 1;
+          let shootStretch = 1;
+          let shootAngle = 0;
+          let isShooting = false;
+
+          /* Scroll-linked divergence: same hash as hero convergence for consistency */
+          if (divergeProgress < 1) {
+            const hash = ((gx * 73.7 + gy * 157.3 + gx * gy * 0.37) % 997) / 997;
+            
+            /* Each dot fires in a narrow 0.05 window, staggered across 0.95 of divergence */
+            const startT = hash * 0.95;
+            const localT = Math.min(1, Math.max(0, (divergeProgress - startT) / 0.05));
+            
+            if (localT <= 0) {
+               alphaMult = 0; /* Invisible before turn — still at convergence point */
+            } else if (localT < 1) {
+               isShooting = true;
+               /* Cubic-out easing for fast initial burst slowing to final grid position */
+               const easeT = 1 - Math.pow(1 - localT, 3);
+               const easeTPrev = 1 - Math.pow(1 - Math.max(0, localT - 0.1), 3);
+               
+               const dx = px - origX;
+               const dy = py - origY;
+               shootAngle = Math.atan2(dy, dx);
+               const distFull = Math.sqrt(dx*dx + dy*dy);
+               const dCurr = distFull * easeT;
+               const dPrev = distFull * easeTPrev;
+               
+               shootStretch = Math.max(3, (dCurr - dPrev) / 15);
+               alphaMult = Math.min(1, shootStretch * 0.4);
+               
+               px = origX + dx * easeT;
+               py = origY + dy * easeT;
+            } else {
+               /* Landed — fade in smoothly */
+               const fadeT = Math.min(1, (divergeProgress - (startT + 0.05)) / 0.05);
+               alphaMult = fadeT * fadeT;
+            }
+          }
+
+          /* Stagger pulse scale: 1.0 → 1.3 → 1.0 over PULSE_DUR ms */
+          let scale = 1;
+          if (pulseStart[i] > 0) {
+            const elapsed = drawNow - pulseStart[i];
+            if (elapsed >= 0 && elapsed < PULSE_DUR) {
+              const t = elapsed / PULSE_DUR;
+              /* Sin curve: 0→1→0 */
+              scale = 1 + 0.3 * Math.sin(t * Math.PI);
+            } else if (elapsed >= PULSE_DUR) {
+              pulseStart[i] = 0; /* pulse done */
+            }
+          }
+
+          const drawSize = spriteSize * scale;
+          const halfDraw = drawSize / 2;
+
+          let renderOp = glows[i] * alphaMult;
+          if (isShooting) {
+              /* Override glow when shooting so they are distinctly visible */
+              renderOp = Math.max(renderOp, Math.min(1, shootStretch * 0.5));
+          } else if (divergeProgress < 1) {
+              /* During scroll-linked divergence, hide dots that haven't fired yet */
+              if (alphaMult === 0) renderOp = 0;
+          }
+           
+          if (renderOp <= 0.005) continue;
+          ctx.globalAlpha = renderOp;
+
+          /* Apply rotation and stretching if currently shooting */
+          ctx.save();
+          ctx.translate(px, py);
+          if (isShooting && shootStretch > 1) {
+              ctx.rotate(shootAngle);
+              ctx.scale(shootStretch, Math.max(0.4, 1.5 - shootStretch*0.1));
+          }
+
+          if (isYearDot[i] && glows[i] > 0.35) {
+            const tint = Math.min(1, (glows[i] - 0.35) * 3);
+            ctx.drawImage(sprite, -halfDraw, -halfDraw, drawSize, drawSize);
+            if (tint > 0.1) {
+              ctx.globalAlpha = tint * 0.6 * alphaMult;
+              ctx.fillStyle = "#ffffff";
+              ctx.beginPath();
+              ctx.arc(0, 0, half * scale, 0, Math.PI * 2);
+              ctx.fill();
+            }
+          } else {
+            ctx.drawImage(sprite, -halfDraw, -halfDraw, drawSize, drawSize);
+          }
+          
+          ctx.restore();
+        }
+      }
+      ctx.globalAlpha = 1;
+
+      /* Cursor glow overlay */
+      if (glowRef.current) {
+        const relY = mouseRef.current.y;
+        glowRef.current.style.background = `radial-gradient(circle 200px at ${mx}px ${relY}px, rgba(255,255,255,0.04), transparent 70%)`;
+      }
+
+      rafRef.current = requestAnimationFrame(tick);
+    };
+
+    rafRef.current = requestAnimationFrame(tick);
+
+    /* Draw zigzag SVG path */
+    if (zigzagPathRef.current && zigzagGlowRef.current) {
+      const points = YEAR_POSITIONS.map((yp) => ({
+        x: oX + Math.floor(yp.xPct * cols) * step + half,
+        y: oY + Math.floor(yp.yPct * rows) * step + half,
+      }));
+
+      let d = `M ${points[0].x} ${points[0].y}`;
+      for (let i = 1; i < points.length; i++) {
+        const prev = points[i - 1];
+        const curr = points[i];
+        const cpX = (prev.x + curr.x) / 2;
+        const cpY1 = prev.y + (curr.y - prev.y) * 0.3;
+        const cpY2 = prev.y + (curr.y - prev.y) * 0.7;
+        d += ` C ${cpX} ${cpY1}, ${cpX} ${cpY2}, ${curr.x} ${curr.y}`;
+      }
+
+      zigzagPathRef.current.setAttribute("d", d);
+      zigzagGlowRef.current.setAttribute("d", d);
+      zigzagPathRef.current.closest("svg")?.setAttribute("viewBox", `0 0 ${W} ${H}`);
+
+      /* Sample points along the path for progressive dot lighting */
+      try {
+        const pathLen = zigzagPathRef.current.getTotalLength();
+        const numSamples = 150;
+        const samples: { x: number; y: number }[] = [];
+        for (let s = 0; s <= numSamples; s++) {
+          const pt = zigzagPathRef.current.getPointAtLength((s / numSamples) * pathLen);
+          samples.push({ x: pt.x, y: pt.y });
+        }
+        zigzagPointsRef.current = samples;
+        zigzagLineStartRef.current = performance.now() + 800;
+      } catch { /* Path not ready yet */ }
+    }
+
+    return () => cancelAnimationFrame(rafRef.current);
+  }, [isActive]);
+
+  /* ── Interactive Draggable Characters (Safe Custom Implementation) ── */
+  useEffect(() => {
+    if (!isActive || !marqueeRef.current) return;
+    
+    const chars = marqueeRef.current.querySelectorAll<HTMLElement>(".exp-marquee-char");
+    if (chars.length === 0) return;
+
+    /* Custom drag implementation because GSAP Draggable destroys the inline layout math */
+    let activeChar: HTMLElement | null = null;
+    let startX = 0;
+    let startY = 0;
+    let currentX = 0;
+    let currentY = 0;
+
+    const onPointerDown = (e: PointerEvent) => {
+      e.preventDefault(); // Prevent native drag/select
+      const target = e.currentTarget as HTMLElement;
+      activeChar = target;
+      
+      /* Record absolute mouse start */
+      startX = e.clientX;
+      startY = e.clientY;
+      
+      /* Use gsap.getProperty to reliably get current GSAP transforms (bypassing matrix/translate3d string CSS parsing issues) */
+      currentX = (gsap.getProperty(target, "x") as number) || 0;
+      currentY = (gsap.getProperty(target, "y") as number) || 0;
+
+      gsap.killTweensOf(target, "x,y,zIndex");
+      gsap.set(target, { zIndex: 100 });
+      
+      /* Listen on window to guarantee we don't drop events if the mouse moves very fast, leaves the element, or hits screen edges */
+      window.addEventListener("pointermove", onPointerMove);
+      window.addEventListener("pointerup", onPointerUp);
+      window.addEventListener("pointercancel", onPointerUp);
+    };
+
+    const onPointerMove = (e: PointerEvent) => {
+      if (!activeChar) return;
+      
+      const dx = e.clientX - startX;
+      const dy = e.clientY - startY;
+      
+      gsap.set(activeChar, {
+        x: currentX + dx,
+        y: currentY + dy
+      });
+    };
+
+    const onPointerUp = (e: PointerEvent) => {
+      if (!activeChar) return;
+      
+      gsap.to(activeChar, {
+        x: 0,
+        y: 0,
+        duration: 1.2,
+        ease: "elastic.out(1, 0.4)",
+        zIndex: 0,
+      });
+      
+      activeChar = null;
+      window.removeEventListener("pointermove", onPointerMove);
+      window.removeEventListener("pointerup", onPointerUp);
+      window.removeEventListener("pointercancel", onPointerUp);
+    };
+
+    chars.forEach(char => {
+      char.addEventListener("pointerdown", onPointerDown);
+    });
+
+    return () => {
+      chars.forEach(char => {
+        char.removeEventListener("pointerdown", onPointerDown);
+        
+        /* Reset state on cleanup */
+        gsap.killTweensOf(char);
+      });
+      window.removeEventListener("pointermove", onPointerMove);
+      window.removeEventListener("pointerup", onPointerUp);
+      window.removeEventListener("pointercancel", onPointerUp);
+    };
+  }, [isActive]);
+
+
+
+  /* ── Interpolator Cache to prevent main-thread freezing ── */
+  /* Flubber path interpolation is heavy. Calculate each unique path pairing exactly ONCE. */
+  const getInterpolator = useMemo(() => {
+    const cache = new Map<string, (t: number) => string>();
+    return (fromPath: string, toPath: string) => {
+      const key = `${fromPath}|${toPath}`;
+      if (cache.has(key)) return cache.get(key)!;
+      const interpolator = interpolate(fromPath, toPath, { maxSegmentLength: 2 });
+      cache.set(key, interpolator);
+      return interpolator;
+    };
+  }, []);
+
+  /* ── Per-character SVG Path Morphing ── */
+  useEffect(() => {
+    if (!isActive || !marqueeRef.current) return;
+
+    const charPathsElements = Array.from(marqueeRef.current.querySelectorAll<SVGPathElement>(".exp-svg-char-path"));
+    if (charPathsElements.length === 0) return;
+
+    const timelines: gsap.core.Timeline[] = [];
+
+    // The text block "CAREER & EXPERIENCE" renders exactly 17 SVGs (spaces are skipped).
+    // CAREER = indices 0-5
+    // & = index 6
+    // EXPERIENCE = indices 7-16
+    const pathsPerBlock = 17;
+    const blocksCount = Math.floor(charPathsElements.length / pathsPerBlock);
+
+    function getShuffled<T>(array: T[], count: number): T[] {
+      const cloned = [...array];
+      for (let i = cloned.length - 1; i > 0; i--) {
+        const j = Math.floor(Math.random() * (i + 1));
+        [cloned[i], cloned[j]] = [cloned[j], cloned[i]];
+      }
+      return cloned.slice(0, count);
+    }
+
+    const careerPool = [0, 1, 2, 3, 4, 5];
+    const expPool = [7, 8, 9, 10, 11, 12, 13, 14, 15, 16];
+
+    for (let b = 0; b < blocksCount; b++) {
+      const blockStartIndex = b * pathsPerBlock;
+      
+      const careerSelected = getShuffled(careerPool, 2);
+      const expSelected = getShuffled(expPool, 3);
+      const animatedIndices = new Set([...careerSelected, ...expSelected]);
+
+      for (let relIdx = 0; relIdx < pathsPerBlock; relIdx++) {
+        // Skip characters not selected for this block iteration
+        if (!animatedIndices.has(relIdx)) continue;
+
+        const globalIdx = blockStartIndex + relIdx;
+        const pathEl = charPathsElements[globalIdx];
+        if (!pathEl) continue;
+
+        const originalPath = pathEl.getAttribute("data-original");
+        if (!originalPath) continue;
+
+        // Use globalIdx 'i' for deterministic deterministic-looking shape logic or randomized logic
+        const i = globalIdx;
+
+      /* Pick 3 constant shapes from the pool for this character */
+      const targetPaths = [
+        shapePaths[i % shapePaths.length],
+        shapePaths[(i + 2) % shapePaths.length],
+        shapePaths[(i + 4) % shapePaths.length],
+      ];
+
+      const tl = gsap.timeline({
+        repeat: -1,
+        delay: (i % 19) * 0.4,
+      });
+
+      targetPaths.forEach((targetPath, shapeIdx) => {
+        /* Grab cached interpolators */
+        const toShape = getInterpolator(originalPath, targetPath);
+        const fromShape = getInterpolator(targetPath, originalPath);
+        
+        /* Object for GSAP to tween */
+        const proxy = { progress: 0 };
+
+        /* Morph Letter -> Shape */
+        tl.to(proxy, {
+          progress: 1,
+          duration: 0.8,
+          ease: "expo.inOut",
+          onUpdate: () => pathEl.setAttribute("d", toShape(proxy.progress)),
+        });
+
+        /* Recolor slightly and subtly scale the SVG container during shape */
+        const svgEl = pathEl.closest("svg");
+        if (svgEl) {
+          tl.to(
+            svgEl,
+            {
+              scale: 1.15,
+              rotation: (Math.random() - 0.5) * 20,
+              duration: 0.8,
+              ease: "expo.inOut",
+            },
+            "<"
+          );
+          tl.to(
+            pathEl,
+            {
+              fill: `hsla(${(i * 37) % 360}, 60%, 80%, 1)`,
+              duration: 0.8,
+            },
+            "<"
+          );
+        }
+
+        /* Hold shape */
+        tl.to({}, { duration: 1.0 });
+
+        /* Reset proxy for return trip */
+        tl.set(proxy, { progress: 0 });
+
+        /* Morph Shape -> Letter */
+        tl.to(proxy, {
+          progress: 1,
+          duration: 0.8,
+          ease: "expo.inOut",
+          onUpdate: () => pathEl.setAttribute("d", fromShape(proxy.progress)),
+        });
+
+        /* Reset container scale/rotation and color */
+        if (svgEl) {
+          tl.to(
+            svgEl,
+            { scale: 1, rotation: 0, duration: 0.8, ease: "expo.inOut" },
+            "<"
+          );
+          tl.to(
+            pathEl,
+            { fill: "#ffffff", duration: 0.8 },
+            "<"
+          );
+        }
+
+        /* Hold letter */
+        tl.to({}, { duration: 0.6 });
+      });
+
+      timelines.push(tl);
+      }
+    }
+
+    return () => {
+      timelines.forEach((tl) => tl.kill());
+      /* Ensure paths are reset */
+      charPathsElements.forEach((pathEl) => {
+        pathEl.setAttribute("d", pathEl.getAttribute("data-original") || "");
+        gsap.set(pathEl, { clearProps: "all" });
+        const svgEl = pathEl.closest("svg");
+        if (svgEl) gsap.set(svgEl, { clearProps: "all" });
+      });
+    };
+  }, [isActive]);
+
+  /* ── Marquee text builder (renders SVGs for morphing) ── */
+  const marqueeText = "CAREER & EXPERIENCE";
+  const buildMarqueeChars = (key: string) => (
+    <span className="exp-marquee-text" key={key}>
+      {marqueeText.split("").map((ch, i) => {
+        const isSpace = ch === " ";
+        const pathData = charPaths[ch] || "";
+
+        return (
+          <span
+            key={`${key}-${i}`}
+            className="exp-marquee-char"
+            style={{ 
+              display: "inline-flex", 
+              justifyContent: "center",
+              alignItems: "center",
+              width: isSpace ? "0.4em" : "1em",
+              height: "1em",
+              minWidth: isSpace ? "0.4em" : "1em",
+              maxWidth: isSpace ? "0.4em" : "1em",
+              flexBasis: isSpace ? "0.4em" : "1em",
+              flexShrink: 0,
+              flexGrow: 0,
+              margin: isSpace ? "0" : "0 0.05em",
+              verticalAlign: "middle",
+              position: "relative",
+              pointerEvents: isSpace ? "none" : "auto", 
+              cursor: isSpace ? "default" : "grab",
+            }}
+          >
+            {!isSpace && pathData ? (
+              <svg 
+                viewBox="0 0 100 100" 
+                style={{ 
+                  width: "100%", 
+                  height: "100%", 
+                  minWidth: "100%", 
+                  display: "block", 
+                  overflow: "visible",
+                  flexShrink: 0  
+                }}
+              >
+                <path 
+                  className="exp-svg-char-path"
+                  d={pathData} 
+                  data-original={pathData}
+                  fill="#ffffff"
+                />
+              </svg>
+            ) : null}
+          </span>
+        );
+      })}
+    </span>
+  );
+  /* ── Year click handler ── */
+  const handleYearClick = useCallback((year: string) => {
+    initAudio();
+    setActiveYear((prev) => (prev === year ? null : year));
+
+    const yearEl = yearElsRef.current.get(year);
+    if (yearEl) {
+      anime({
+        targets: yearEl,
+        scale: [1, 1.2, 1.05],
+        duration: 500,
+        ease: "outElastic(1, .6)",
+      });
+    }
+  }, []);
+
+  /* ── Mini marquee for cards ── */
+  const buildMiniMarquee = (text: string) => (
+    <div className="exp-mini-marquee">
+      <div className="exp-mini-marquee-track">
+        {Array.from({ length: 12 }, (_, i) => (
+          <span key={i} className="exp-mini-marquee-text">{text}</span>
+        ))}
+      </div>
+    </div>
+  );
+
+  return (
+    <section ref={sectionRef} className={`exp-section${isActive ? " active" : ""}`} id="experience">
+      {/* Dot grid canvas */}
+      <canvas ref={canvasRef} className="exp-dot-canvas" />
+
+      {/* Cursor ambient glow */}
+      <div ref={glowRef} className="exp-cursor-glow" />
+
+      {/* Marquee banner */}
+      <div className="exp-marquee" ref={marqueeRef}>
+        <div className="exp-marquee-track">
+          {Array.from({ length: 8 }, (_, i) => (
+            <span key={i}>
+              {buildMarqueeChars(`m${i}`)}
+            </span>
+          ))}
+        </div>
+      </div>
+
+      {/* SVG Zigzag line — full viewport layer */}
+      <svg className="exp-zigzag-line">
+        <defs>
+          <linearGradient id="expZigzagGradient" x1="0%" y1="0%" x2="0%" y2="100%">
+            <stop offset="0%" stopColor="#ff0033" stopOpacity="0.8" />
+            <stop offset="50%" stopColor="#ff0033" stopOpacity="1" />
+            <stop offset="100%" stopColor="#ff0033" stopOpacity="0.4" />
+          </linearGradient>
+        </defs>
+        <path ref={zigzagGlowRef} className="exp-zigzag-glow" />
+        <path ref={zigzagPathRef} className="exp-zigzag-path" />
+      </svg>
+
+      {/* Year markers — positioned at exact canvas dot pixel coordinates */}
+      {YEAR_POSITIONS.map(({ year, xPct, yPct }) => {
+        const pos = yearPixelPositions.get(year);
+        const isRevealed = revealedYears.has(year);
+        const isYearActive = activeYear === year;
+        return (
+          <div
+            key={year}
+            ref={(el) => { if (el) yearElsRef.current.set(year, el); }}
+            className={`exp-year${isRevealed ? " revealed" : ""}${isYearActive ? " active" : ""}`}
+            style={{
+              left: pos ? pos.x : `${xPct * 100}%`,
+              top: pos ? pos.y : `${yPct * 100}%`,
+            }}
+            onClick={() => handleYearClick(year)}
+          >
+            {/* Hidden text for accessibility, while the canvas dots render the visuals */}
+            <span style={{ position: 'absolute', width: 1, height: 1, padding: 0, margin: -1, overflow: 'hidden', clip: 'rect(0,0,0,0)', border: 0 }}>{year}</span>
+          </div>
+        );
+      })}
+
+      {/* Card overlay — centered modal */}
+      {activeYear && (() => {
+        const entry = CAREER.find((c) => c.year === activeYear);
+        if (!entry) return null;
+        return (
+          <div className="exp-card-overlay" onClick={() => setActiveYear(null)}>
+            <div
+              className="exp-card visible"
+              ref={(el) => { if (el) cardElsRef.current.set(entry.year, el); }}
+              onClick={(e) => e.stopPropagation()}
+            >
+              <button
+                className="exp-card-close"
+                onClick={() => setActiveYear(null)}
+                aria-label="Close"
+              >
+                ✕
+              </button>
+
+              <div className="exp-card-year-badge">{entry.year}</div>
+
+              <div className="exp-card-header">
+                <h3 className="exp-card-company">{entry.company}</h3>
+                <p className="exp-card-role">{entry.role}</p>
+              </div>
+
+              <p className="exp-card-desc">{entry.description}</p>
+
+              {buildMiniMarquee(entry.roleMarquee)}
+
+              <div className="exp-card-media">
+                {entry.videoSrc ? (
+                  <video src={entry.videoSrc} autoPlay muted loop playsInline />
+                ) : (
+                  <div className="exp-card-media-overlay">
+                    <span className="exp-card-media-icon">▶</span>
+                  </div>
+                )}
+              </div>
+
+              <h4 className="exp-card-section-title">WHAT I DID</h4>
+              <ul className="exp-card-bullets">
+                {entry.bullets.map((b, i) => (
+                  <li key={i} className="exp-card-bullet">{b}</li>
+                ))}
+              </ul>
+            </div>
+          </div>
+        );
+      })()}
+
+      {/* Hint overlay */}
+      {isActive && revealedYears.size === 0 && (
+        <div className="exp-hint">
+          <span className="exp-hint-icon">⌖</span>
+          <span className="exp-hint-text">find the hidden years</span>
+        </div>
+      )}
+    </section>
+  );
+}
+
+```
+
+### File: app/components/sections/HeroSection.tsx
+```tsx
+import type { SectionConfig } from "./types";
+import "./hero-section.css";
+
+const HeroSection: SectionConfig = {
+  label: "00 // hero",
+  lines: [
+    "KALYAN KUMAR",
+    "KONDURU",
+    "",
+    "full-stack software engineer",
+    "react · typescript · java · python · go",
+  ],
+  fontSizeBase: 32,
+  lineHeight: 1.7,
+  letterSpacing: 3,
+};
+
+export default HeroSection;
+
+```
+
+### File: app/components/sections/ProjectsSection.tsx
+```tsx
+import type { SectionConfig } from "./types";
+import "./projects-section.css";
+
+const ProjectsSection: SectionConfig = {
+  label: "03 // projects",
+  lines: [
+    "// projects",
+    "",
+    "serverless event pipeline — AWS",
+    "Lambda (Go), API Gateway, DynamoDB.",
+    "CloudFormation IaC, CloudWatch.",
+    "",
+    "concurrent job scheduler — Go",
+    "goroutines + channels, Chi router.",
+    "1,200 jobs/min, zero drops.",
+    "",
+    "next.js e-commerce storefront",
+    "SSR/ISR, Redux, Go (Gin) API.",
+    "98.5 Lighthouse score on Vercel.",
+    "",
+    "graphql product search — Go",
+    "MongoDB, Apollo Client, cursor",
+    "pagination, <100ms responses.",
+  ],
+  fontSizeBase: 16,
+  lineHeight: 1.6,
+  letterSpacing: 1,
+};
+
+export default ProjectsSection;
+
+```
+
+### File: app/components/sections/SkillsSection.tsx
+```tsx
+import type { SectionConfig } from "./types";
+import "./skills-section.css";
+
+const SkillsSection: SectionConfig = {
+  label: "04 // skills",
+  lines: [
+    "// tech_stack",
+    "",
+    "React / Next.js / Redux / Zustand",
+    "TypeScript / JavaScript (ES6+)",
+    "Java / Spring Boot / Hibernate",
+    "Python / Flask / FastAPI",
+    "Go / Gin / Chi",
+    "",
+    "Docker / Kubernetes / Helm",
+    "Terraform / AWS / GKE",
+    "PostgreSQL / MongoDB / Redis",
+    "GraphQL / REST / OpenAPI",
+    "",
+    "// ai + testing",
+    "OpenAI / LangChain / RAG / HuggingFace",
+    "Jest / Cypress / Playwright / k6",
+  ],
+  fontSizeBase: 16,
+  lineHeight: 1.65,
+  letterSpacing: 2,
+};
+
+export default SkillsSection;
+
+```
+
+### File: app/components/sections/about-section.css
+```css
+/* AboutSection — particle text styles */
+
+```
+
+### File: app/components/sections/contact-section.css
+```css
+/* ContactSection — particle text styles */
+
+```
+
+### File: app/components/sections/experience-section.css
+```css
+/* ═══════════════════════════════════════
+   Experience Section — Nothing-inspired Career Timeline
+   ═══════════════════════════════════════ */
+
+/* ── Custom Properties ── */
+:root {
+  --exp-accent: #ffffff;
+  --exp-accent-light: #ffffff;
+  --exp-bg: #050505;
+  --exp-text: #ffffff;
+  --exp-text-muted: #ffffffaa;
+  --exp-text-dim: #ffffff40;
+  --exp-border: #ffffff20;
+  --exp-card-bg: #0a0a0a;
+  --exp-card-border: #ffffff12;
+  --exp-glow-spread: 220px;
+  --exp-marquee-speed: 40s;
+  --exp-mini-marquee-speed: 10s;
+  --exp-card-reveal-duration: 600ms;
+}
+
+/* ═══════════════════════════════════════
+   Section root
+   ═══════════════════════════════════════ */
+.exp-section {
+  position: relative;
+  width: 100vw;
+  height: 400vh; /* Expansive map scroll area */
+  background: var(--exp-bg);
+  overflow: visible; /* Changed from overflow-x: hidden to prevent Draggable clipping */
+  cursor: crosshair;
+  z-index: 15;
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity 600ms ease;
+  will-change: opacity;
+}
+
+.exp-section.active {
+  opacity: 1;
+  pointer-events: auto;
+}
+
+/* Subtle scan-line overlay (matches entry screen) */
+.exp-section::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  height: 100%;
+  background: repeating-linear-gradient(
+    to bottom,
+    transparent 0px,
+    transparent 3px,
+    rgba(0, 0, 0, 0.025) 3px,
+    rgba(0, 0, 0, 0.025) 4px
+  );
+  pointer-events: none;
+  z-index: 5;
+}
+
+/* ═══════════════════════════════════════
+   Dot grid canvas (full section coverage)
+   ═══════════════════════════════════════ */
+.exp-dot-canvas {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  z-index: 1;
+  pointer-events: none;
+}
+
+
+
+/* Individual dot in the grid */
+.exp-dot {
+  position: absolute;
+  width: 2px;
+  height: 2px;
+  border-radius: 50%;
+  background: #ffffff08;
+  will-change: opacity;
+  transform: translateZ(0);
+}
+
+.exp-dot.lit {
+  background: #ffffff30;
+  box-shadow: 0 0 4px #ffffff15;
+}
+
+/* ═══════════════════════════════════════
+   Cursor ambient glow (matches entry screen)
+   ═══════════════════════════════════════ */
+.exp-cursor-glow {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  z-index: 2;
+  pointer-events: none;
+  mix-blend-mode: screen;
+  will-change: background;
+  transform: translateZ(0);
+}
+
+/* ═══════════════════════════════════════
+   Content wrapper (no longer used — elements positioned on section root)
+   ═══════════════════════════════════════ */
+
+/* ═══════════════════════════════════════
+   Marquee banner — "CAREER & EXPERIENCE"
+   ═══════════════════════════════════════ */
+.exp-marquee {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100vw;
+  height: clamp(100px, 18vw, 200px);
+  background: transparent;
+  overflow: visible;
+  z-index: 4;
+  transform: translateZ(0);
+  will-change: transform;
+}
+
+.exp-marquee::before,
+.exp-marquee::after {
+  display: none;
+}
+
+.exp-marquee-track {
+  display: block;
+  white-space: nowrap;
+  height: 100%;
+  width: max-content;
+  animation: expMarquee var(--exp-marquee-speed) linear infinite;
+  will-change: transform;
+  transform: translateZ(0);
+}
+
+.exp-marquee-text {
+  display: inline-block;
+  vertical-align: middle;
+  padding-right: 60px; /* Spacing between repeated phrases */
+  font-family: var(--font-mono), monospace;
+  font-size: clamp(40px, 10vw, 120px);
+  font-weight: 800;
+  color: #ffffff;
+  text-transform: uppercase;
+  letter-spacing: 0.02em;
+  white-space: nowrap;
+  line-height: clamp(100px, 18vw, 200px);
+  user-select: none;
+  text-shadow: 0 0 30px rgba(255,255,255,0.3), 0 0 60px rgba(255,255,255,0.1);
+}
+
+/* Individual characters for GSAP SVG morphing */
+.exp-marquee-char {
+  display: inline-block;
+  will-change: transform;
+  backface-visibility: hidden;
+}
+
+.exp-marquee-char svg {
+  filter: drop-shadow(0 0 15px rgba(255,255,255,0.3)) drop-shadow(0 0 30px rgba(255,255,255,0.1));
+}
+
+/* ═══════════════════════════════════════
+   Timeline container (no longer used)
+   ═══════════════════════════════════════ */
+
+/* ═══════════════════════════════════════
+   Zigzag SVG line
+   ═══════════════════════════════════════ */
+.exp-zigzag-line {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100vw;
+  height: 100%;
+  z-index: 3;
+  pointer-events: none;
+}
+
+.exp-zigzag-path {
+  fill: none;
+  stroke: url(#expZigzagGradient);
+  stroke-width: 2;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+  filter: drop-shadow(0 0 6px #ff0033) drop-shadow(0 0 12px rgba(255, 0, 51, 0.4));
+  transition: stroke-dashoffset 0.6s ease-out;
+  transform: translateZ(0);
+}
+
+/* Glow pulse overlay on the line */
+.exp-zigzag-glow {
+  fill: none;
+  stroke: #ff0033;
+  stroke-width: 4;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+  opacity: 0.15;
+  filter: blur(6px);
+  transition: stroke-dashoffset 0.6s ease-out;
+}
+
+/* ═══════════════════════════════════════
+   Year markers
+   ═══════════════════════════════════════ */
+.exp-year {
+  position: absolute;
+  z-index: 6;
+  width: 160px;
+  height: 80px;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  align-items: center;
+  cursor: pointer;
+  opacity: 0;
+  transition: opacity 500ms ease, transform 500ms ease;
+  transform: translate(-50%, -50%) translateY(10px) translateZ(0);
+  will-change: opacity, transform;
+  cursor: pointer;
+}
+
+.exp-year.revealed {
+  opacity: 1;
+  transform: translate(-50%, -50%) translateY(0) translateZ(0);
+}
+
+.exp-year.active .exp-year-number {
+  color: var(--exp-text);
+  text-shadow:
+    0 0 20px rgba(255, 255, 255, 0.6),
+    0 0 40px rgba(255, 255, 255, 0.3);
+}
+
+.exp-year-number {
+  font-family: var(--font-mono), monospace;
+  font-size: clamp(36px, 5vw, 64px);
+  font-weight: 300;
+  color: var(--exp-text-dim);
+  letter-spacing: 4px;
+  line-height: 1;
+  transition: color 400ms ease, text-shadow 400ms ease, opacity 400ms ease;
+  user-select: none;
+  opacity: 0;
+}
+
+.exp-year.revealed .exp-year-number {
+  opacity: 0.2;
+}
+
+.exp-year.revealed:hover .exp-year-number {
+  opacity: 0.8;
+  color: #fff;
+}
+
+.exp-year.active .exp-year-number {
+  color: var(--exp-text);
+  opacity: 1;
+  text-shadow:
+    0 0 20px rgba(255, 255, 255, 0.6),
+    0 0 40px rgba(255, 255, 255, 0.3);
+}
+
+/* Year positions now set via inline styles from JS pixel calculations */
+
+/* ═══════════════════════════════════════
+   Company detail cards
+   ═══════════════════════════════════════ */
+/* ═══════════════════════════════════════
+   Card overlay — centered modal backdrop
+   ═══════════════════════════════════════ */
+.exp-card-overlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100vw;
+  height: 100vh;
+  z-index: 9999;
+  display: block;
+  background: var(--exp-bg);
+  animation: expFadeIn 300ms ease both;
+  cursor: pointer;
+  overflow-y: auto;
+  overflow-x: hidden;
+}
+
+.exp-card {
+  position: relative;
+  z-index: 21;
+  width: 100vw;
+  min-height: 100vh;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  background: transparent;
+  border: none;
+  border-radius: 0;
+  padding: 100px 10vw;
+  opacity: 0;
+  transform: translateY(30px) scale(0.96) translateZ(0);
+  will-change: opacity, transform;
+  cursor: default;
+  transition: opacity var(--exp-card-reveal-duration) ease, transform var(--exp-card-reveal-duration) ease;
+}
+
+.exp-card.visible {
+  opacity: 1;
+  transform: translateY(0) scale(1) translateZ(0);
+  animation: expCardReveal var(--exp-card-reveal-duration) ease both;
+}
+
+/* Close button */
+.exp-card-close {
+  position: fixed;
+  top: 32px;
+  right: 32px;
+  background: none;
+  border: 1px solid var(--exp-border);
+  color: var(--exp-text-dim);
+  font-family: var(--font-mono), monospace;
+  font-size: 24px;
+  width: 48px;
+  height: 48px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  transition: color 200ms ease, border-color 200ms ease, background 200ms ease;
+  z-index: 30;
+}
+
+.exp-card-close:hover {
+  color: var(--exp-text);
+  border-color: var(--exp-accent);
+  background: rgba(255, 255, 255, 0.1);
+}
+
+/* Year badge inside card */
+.exp-card-year-badge {
+  font-family: var(--font-mono), monospace;
+  font-size: 16px;
+  font-weight: 600;
+  color: var(--exp-accent-light);
+  letter-spacing: 4px;
+  text-transform: uppercase;
+  margin-bottom: 24px;
+  padding: 6px 16px;
+  border: 1px solid rgba(255, 255, 255, 0.25);
+  border-radius: 2px;
+  display: inline-block;
+  background: rgba(255, 255, 255, 0.06);
+}
+
+/* Accent top bar on card */
+.exp-card::before {
+  content: "";
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  height: 4px;
+  background: linear-gradient(
+    90deg,
+    transparent,
+    var(--exp-accent),
+    transparent
+  );
+  opacity: 0.6;
+}
+
+/* Card positions now handled by centered modal overlay */
+
+/* ── Card header ── */
+.exp-card-header {
+  margin-bottom: 32px;
+}
+
+.exp-card-company {
+  font-family: var(--font-mono), monospace;
+  font-size: clamp(32px, 5vw, 64px);
+  font-weight: 600;
+  color: var(--exp-text);
+  letter-spacing: 4px;
+  text-transform: uppercase;
+  margin: 0 0 12px;
+}
+
+.exp-card-role {
+  font-family: var(--font-mono), monospace;
+  font-size: clamp(16px, 2vw, 24px);
+  color: var(--exp-text-muted);
+  letter-spacing: 2px;
+  text-transform: uppercase;
+  margin: 0;
+}
+
+/* ── Card description ── */
+.exp-card-desc {
+  font-family: var(--font-mono), monospace;
+  font-size: clamp(16px, 1.5vw, 20px);
+  line-height: 1.8;
+  color: var(--exp-text-muted);
+  letter-spacing: 0.5px;
+  margin: 0 0 40px;
+  max-width: 800px;
+}
+
+/* ═══════════════════════════════════════
+   Mini marquee inside card (role type)
+   ═══════════════════════════════════════ */
+.exp-mini-marquee {
+  width: 100%;
+  max-width: 800px;
+  height: 48px;
+  overflow: hidden;
+  background: rgba(255, 255, 255, 0.08); /* Replaced pink */
+  border: 1px solid rgba(255, 255, 255, 0.15); /* Replaced pink */
+  border-radius: 2px;
+  margin-bottom: 40px;
+  position: relative;
+}
+
+.exp-mini-marquee::before,
+.exp-mini-marquee::after {
+  content: "";
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  width: 40px;
+  z-index: 1;
+  pointer-events: none;
+}
+
+.exp-mini-marquee::before {
+  left: 0;
+  background: linear-gradient(90deg, var(--exp-bg), transparent);
+}
+
+.exp-mini-marquee::after {
+  right: 0;
+  background: linear-gradient(270deg, var(--exp-bg), transparent);
+}
+
+.exp-mini-marquee-track {
+  display: flex;
+  align-items: center;
+  height: 100%;
+  animation: expMarquee var(--exp-mini-marquee-speed) linear infinite;
+  will-change: transform;
+  transform: translateZ(0);
+}
+
+.exp-mini-marquee-text {
+  flex-shrink: 0;
+  font-family: var(--font-mono), monospace;
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--exp-accent-light);
+  text-transform: uppercase;
+  letter-spacing: 6px;
+  white-space: nowrap;
+  padding: 0 30px;
+  line-height: 48px;
+  user-select: none;
+}
+
+/* ═══════════════════════════════════════
+   Media / video area
+   ═══════════════════════════════════════ */
+.exp-card-media {
+  width: 100%;
+  aspect-ratio: 16 / 9;
+  background: #0a0a0a;
+  border: 1px solid var(--exp-card-border);
+  border-radius: 2px;
+  margin-bottom: 20px;
+  overflow: hidden;
+  position: relative;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.exp-card-media video,
+.exp-card-media img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+/* Play indicator overlay */
+.exp-card-media-overlay {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: rgba(0, 0, 0, 0.3);
+  opacity: 1;
+  transition: opacity 300ms ease;
+}
+
+.exp-card-media-overlay:hover {
+  opacity: 0;
+}
+
+.exp-card-media-icon {
+  font-family: var(--font-mono), monospace;
+  font-size: 24px;
+  color: var(--exp-text-dim);
+}
+
+/* ═══════════════════════════════════════
+   "What I did" section
+   ═══════════════════════════════════════ */
+.exp-card-section-title {
+  font-family: var(--font-mono), monospace;
+  font-size: 10px;
+  font-weight: 600;
+  color: var(--exp-text-dim);
+  letter-spacing: 4px;
+  text-transform: uppercase;
+  margin: 0 0 12px;
+}
+
+.exp-card-bullets {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.exp-card-bullet {
+  font-family: var(--font-mono), monospace;
+  font-size: 11px;
+  line-height: 1.7;
+  color: var(--exp-text-muted);
+  letter-spacing: 0.3px;
+  padding-left: 16px;
+  position: relative;
+}
+
+.exp-card-bullet::before {
+  content: "◆";
+  position: absolute;
+  left: 0;
+  top: 0;
+  font-size: 6px;
+  color: var(--exp-accent);
+  line-height: 1.7;
+  transform: translateY(2px);
+}
+
+/* ═══════════════════════════════════════
+   Keyframes
+   ═══════════════════════════════════════ */
+
+/* Marquee — infinite left scroll */
+@keyframes expMarquee {
+  0% {
+    transform: translateX(0);
+  }
+  100% {
+    transform: translateX(-50%);
+  }
+}
+
+/* Glow pulse — breathing opacity */
+@keyframes expGlowPulse {
+  0%,
+  100% {
+    opacity: 0.6;
+  }
+  50% {
+    opacity: 1;
+  }
+}
+
+/* Card reveal — scale up + fade in */
+@keyframes expCardReveal {
+  0% {
+    opacity: 0;
+    transform: translateY(30px) scale(0.96) translateZ(0);
+  }
+  100% {
+    opacity: 1;
+    transform: translateY(0) scale(1) translateZ(0);
+  }
+}
+
+/* Year number pulse when active */
+@keyframes expYearPulse {
+  0%,
+  100% {
+    text-shadow:
+      0 0 20px rgba(192, 38, 211, 0.6),
+      0 0 40px rgba(192, 38, 211, 0.3);
+  }
+  50% {
+    text-shadow:
+      0 0 30px rgba(192, 38, 211, 0.8),
+      0 0 60px rgba(192, 38, 211, 0.5);
+  }
+}
+
+/* Fade in utility */
+@keyframes expFadeIn {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+
+/* ═══════════════════════════════════════
+   Active year glow animation
+   ═══════════════════════════════════════ */
+.exp-year.active .exp-year-number {
+  animation: expYearPulse 2.4s ease-in-out infinite;
+}
+
+/* ═══════════════════════════════════════
+   Staggered card bullet reveals
+   ═══════════════════════════════════════ */
+.exp-card.visible .exp-card-bullet {
+  opacity: 0;
+  animation: expFadeIn 400ms ease forwards;
+}
+
+.exp-card.visible .exp-card-bullet:nth-child(1) { animation-delay: 200ms; }
+.exp-card.visible .exp-card-bullet:nth-child(2) { animation-delay: 320ms; }
+.exp-card.visible .exp-card-bullet:nth-child(3) { animation-delay: 440ms; }
+.exp-card.visible .exp-card-bullet:nth-child(4) { animation-delay: 560ms; }
+.exp-card.visible .exp-card-bullet:nth-child(5) { animation-delay: 680ms; }
+.exp-card.visible .exp-card-bullet:nth-child(6) { animation-delay: 800ms; }
+
+/* ═══════════════════════════════════════
+   Mobile (max-width: 600px)
+   ═══════════════════════════════════════ */
+@media (max-width: 600px) {
+  .exp-content {
+    padding: 40px 0 80px;
+  }
+
+  /* Marquee */
+  .exp-marquee {
+    height: clamp(50px, 12vw, 80px);
+    top: 30%;
+  }
+
+  .exp-marquee-text {
+    font-size: clamp(20px, 8vw, 50px);
+    padding: 0 10px;
+    line-height: clamp(50px, 12vw, 80px);
+  }
+
+  /* Timeline */
+
+  /* Year markers — positions set by JS */
+
+  .exp-year-number {
+    font-size: clamp(28px, 8vw, 40px);
+    letter-spacing: 2px;
+  }
+
+  /* Cards — full width in modal */
+  .exp-card {
+    width: 92vw;
+    max-height: 80vh;
+    padding: 24px 20px;
+  }
+
+  .exp-card-company {
+    font-size: 14px;
+    letter-spacing: 2px;
+  }
+
+  .exp-card-role {
+    font-size: 10px;
+    letter-spacing: 1.5px;
+  }
+
+  .exp-card-desc {
+    font-size: 11px;
+    line-height: 1.7;
+  }
+
+  .exp-mini-marquee {
+    height: 26px;
+  }
+
+  .exp-mini-marquee-text {
+    font-size: 8px;
+    letter-spacing: 4px;
+    line-height: 26px;
+    padding: 0 12px;
+  }
+
+  .exp-card-section-title {
+    font-size: 9px;
+    letter-spacing: 3px;
+  }
+
+  .exp-card-bullet {
+    font-size: 10px;
+    padding-left: 14px;
+  }
+
+  .exp-card-bullet::before {
+    font-size: 5px;
+  }
+
+  /* Zigzag line thinner on mobile */
+  .exp-zigzag-path {
+    stroke-width: 1.5;
+  }
+
+  .exp-zigzag-glow {
+    stroke-width: 3;
+  }
+}
+
+/* ═══════════════════════════════════════
+   Tablet (601px – 1024px)
+   ═══════════════════════════════════════ */
+@media (min-width: 601px) and (max-width: 1024px) {
+  .exp-content {
+    padding: 60px 0 100px;
+  }
+
+  /* Marquee */
+  .exp-marquee {
+    height: clamp(60px, 14vw, 120px);
+  }
+
+  .exp-marquee-text {
+    font-size: clamp(30px, 8vw, 80px);
+    padding: 0 20px;
+    line-height: clamp(60px, 14vw, 120px);
+  }
+
+  /* Timeline */
+  .exp-timeline {
+    padding: 50px 24px;
+  }
+
+  /* Year markers — positions set by JS */
+
+  .exp-year-number {
+    font-size: clamp(30px, 4vw, 48px);
+  }
+
+  /* Cards in modal */
+  .exp-card {
+    width: clamp(320px, 50vw, 460px);
+    padding: 28px 28px;
+  }
+
+  .exp-card-company {
+    font-size: 16px;
+  }
+
+  .exp-card-desc {
+    font-size: 11px;
+  }
+
+  .exp-mini-marquee-text {
+    font-size: 9px;
+    letter-spacing: 5px;
+  }
+}
+
+/* ═══════════════════════════════════════
+   Hint overlay
+   ═══════════════════════════════════════ */
+.exp-hint {
+  position: absolute;
+  top: 50vh;
+  left: 0;
+  width: 100vw;
+  text-align: center;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  z-index: 10;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 12px;
+  animation: expFadeIn 1s ease both;
+  pointer-events: none;
+}
+
+.exp-hint-icon {
+  font-family: var(--font-mono), monospace;
+  font-size: 28px;
+  color: #ffffff40;
+}
+
+.exp-hint-text {
+  font-family: var(--font-mono), monospace;
+  font-size: 12px;
+  color: #ffffff30;
+  letter-spacing: 4px;
+  text-transform: uppercase;
+}
+
+/* ═══════════════════════════════════════
+   Reduced motion
+   ═══════════════════════════════════════ */
+@media (prefers-reduced-motion: reduce) {
+  .exp-marquee-track,
+  .exp-mini-marquee-track {
+    animation: none;
+  }
+
+  .exp-zigzag-path,
+  .exp-zigzag-glow {
+    animation: none;
+    stroke-dashoffset: 0;
+  }
+
+  .exp-card.visible {
+    animation: none;
+  }
+
+  .exp-card.visible .exp-card-bullet {
+    animation: none;
+    opacity: 1;
+  }
+
+  .exp-year.active .exp-year-number {
+    animation: none;
+  }
+
+  .exp-year,
+  .exp-card,
+  .exp-dot {
+    will-change: auto;
+  }
+}
+
+```
+
+### File: app/components/sections/hero-section.css
+```css
+/* HeroSection — particle text styles */
+/* Styles are rendered via canvas; this file reserved for future overlays */
+
+```
+
+### File: app/components/sections/index.ts
+```ts
+export { default as HeroSection } from "./HeroSection";
+export { default as AboutSection } from "./AboutSection";
+export { default as ExperienceSection } from "./ExperienceSection";
+export { default as ProjectsSection } from "./ProjectsSection";
+export { default as SkillsSection } from "./SkillsSection";
+export { default as ContactSection } from "./ContactSection";
+export type { SectionConfig } from "./types";
+
+```
+
+### File: app/components/sections/projects-section.css
+```css
+/* ProjectsSection — particle text styles */
+
+```
+
+### File: app/components/sections/skills-section.css
+```css
+/* SkillsSection — particle text styles */
+
+```
+
+### File: app/components/sections/types.ts
+```ts
+/* Shared section config type used by all section definitions and ParticleCanvas */
+export interface SectionConfig {
+  label: string;
+  lines: string[];
+  fontSizeBase: number;
+  lineHeight: number;
+  letterSpacing: number;
+}
+
+```
+
+### File: app/globals.css
+```css
+*,
+*::before,
+*::after {
+  box-sizing: border-box;
+  margin: 0;
+  padding: 0;
+}
+
+html,
+body {
+  width: 100%;
+  min-height: 100%;
+  background: #0a0a0a;
+  color: #ffffff;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+/* Scrollbar styling — minimal */
+body::-webkit-scrollbar {
+  width: 4px;
+}
+body::-webkit-scrollbar-track {
+  background: transparent;
+}
+body::-webkit-scrollbar-thumb {
+  background: #ffffff15;
+  border-radius: 2px;
+}
+body::-webkit-scrollbar-thumb:hover {
+  background: #ffffff30;
+}
+
+::selection {
+  background: #ffffff;
+  color: #0a0a0a;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.001ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.001ms !important;
+  }
+}
+
+```
+
+### File: app/layout.tsx
+```tsx
+import type { Metadata } from "next";
+import { Pixelify_Sans, JetBrains_Mono } from "next/font/google";
+import "./globals.css";
+
+const pixelify = Pixelify_Sans({
+  subsets: ["latin"],
+  variable: "--font-pixel",
+  weight: ["400", "500", "600", "700"],
+});
+
+const jetbrains = JetBrains_Mono({
+  subsets: ["latin"],
+  variable: "--font-mono",
+  weight: ["300", "400", "500"],
+});
+
+export const metadata: Metadata = {
+  title: "Kalyan Kumar",
+  description: "Portfolio",
+};
+
+export default function RootLayout({
+  children,
+}: {
+  children: React.ReactNode;
+}) {
+  return (
+    <html lang="en" className={`${pixelify.variable} ${jetbrains.variable}`}>
+      <body>{children}</body>
+    </html>
+  );
+}
+
+```
+
+### File: app/page.tsx
+```tsx
+"use client";
+
+import { useState, useEffect, useCallback } from "react";
+import EntryScreen from "./components/EntryScreen";
+import ParticleCanvas from "./components/ParticleCanvas";
+import ExperienceSection from "./components/sections/ExperienceSection";
+
+export default function Home() {
+  const [entered, setEntered] = useState(false);
+  /* Track window size so canvas components re-mount on resize */
+  const [resizeKey, setResizeKey] = useState(0);
+
+  const handleResize = useCallback(() => {
+    setResizeKey((k) => k + 1);
+  }, []);
+
+  useEffect(() => {
+    let timer: ReturnType<typeof setTimeout>;
+    const debounced = () => {
+      clearTimeout(timer);
+      timer = setTimeout(handleResize, 300);
+    };
+    window.addEventListener("resize", debounced);
+    return () => {
+      window.removeEventListener("resize", debounced);
+      clearTimeout(timer);
+    };
+  }, [handleResize]);
+
+  return (
+    <main>
+      {!entered ? (
+        <EntryScreen key={`entry-${resizeKey}`} onEnter={() => setEntered(true)} />
+      ) : (
+        <>
+          <ParticleCanvas key={`pc-${resizeKey}`} />
+          <ExperienceSection key={`exp-${resizeKey}`} />
+        </>
+      )}
+    </main>
+  );
+}
+
+```
+
+### File: next-env.d.ts
+```ts
+/// <reference types="next" />
+/// <reference types="next/image-types/global" />
+import "./.next/dev/types/routes.d.ts";
+
+// NOTE: This file should not be edited
+// see https://nextjs.org/docs/app/api-reference/config/typescript for more information.
+
+```
+
+### File: next.config.ts
+```ts
+import type { NextConfig } from "next";
+
+const nextConfig: NextConfig = {
+  reactStrictMode: true,
+  allowedDevOrigins: ["http://[IP_ADDRESS]", "http://localhost:3000"],
+};
+
+export default nextConfig;
+
+```
+
+### File: package.json
+```json
+{
+  "name": "nothing",
+  "private": true,
+  "version": "0.0.0",
+  "scripts": {
+    "dev": "next dev",
+    "build": "next build",
+    "start": "next start"
+  },
+  "dependencies": {
+    "@types/animejs": "^3.1.13",
+    "animejs": "^3.2.2",
+    "flubber": "^0.4.2",
+    "gsap": "^3.14.2",
+    "next": "^16.1.6",
+    "react": "^18.3.1",
+    "react-dom": "^18.3.1",
+    "typed.js": "^3.0.0"
+  },
+  "devDependencies": {
+    "@types/flubber": "^0.4.0",
+    "@types/node": "^25.3.5",
+    "@types/react": "^18.3.12",
+    "@types/react-dom": "^18.3.1",
+    "typescript": "^5.6.2"
+  }
+}
+
+```
+
+### File: tsconfig.json
+```json
+{
+  "compilerOptions": {
+    "target": "ES2017",
+    "lib": [
+      "dom",
+      "dom.iterable",
+      "esnext"
+    ],
+    "allowJs": true,
+    "skipLibCheck": true,
+    "strict": true,
+    "noEmit": true,
+    "esModuleInterop": true,
+    "module": "esnext",
+    "moduleResolution": "bundler",
+    "resolveJsonModule": true,
+    "isolatedModules": true,
+    "jsx": "react-jsx",
+    "incremental": true,
+    "plugins": [
+      {
+        "name": "next"
+      }
+    ],
+    "paths": {
+      "@/*": [
+        "./*"
+      ]
+    }
+  },
+  "include": [
+    "next-env.d.ts",
+    "**/*.ts",
+    "**/*.tsx",
+    ".next/types/**/*.ts",
+    ".next/dev/types/**/*.ts"
+  ],
+  "exclude": [
+    "node_modules"
+  ]
+}
+
+```
+
+
+
+After creating all these files in the exact directory structure specified, please initialize the project, make sure Next.js is set up, and provide instructions to run the development server.

@@ -101,6 +101,10 @@ self.__SERVER_FILES_MANIFEST={
       }
     },
     "outputFileTracingRoot": "/Users/kalyankumarkonduru/Nothing_Portfolio",
+    "allowedDevOrigins": [
+      "http://[IP_ADDRESS]",
+      "http://localhost:3000"
+    ],
     "cacheComponents": false,
     "cacheLife": {
       "default": {

@@ -589,8 +589,8 @@ function EntryScreen({ onEnter }) {
         if (!container) return;
         const W = window.innerWidth;
         const H = window.innerHeight;
-        const blockSize = W < 480 ? 7 : W < 768 ? 10 : W < 1024 ? 18 : 22;
-        const gap = W < 480 ? 1 : W < 768 ? 2 : 3;
+        const blockSize = W < 600 ? 14 : W < 1024 ? 18 : 22;
+        const gap = W < 600 ? 2 : 3;
         const step = blockSize + gap;
         const cols = Math.floor(W / step);
         const rows = Math.floor(H / step);
@@ -5360,7 +5360,7 @@ function ParticleCanvas() {
         const oY = (H - rows * step + gap) / 2;
         const N = cols * rows;
         const halfBlock = blockSize / 2;
-        /* ── Hero scale — big letters that fill the viewport ── */ const heroScale = W < 480 ? 2 : W < 768 ? 3 : W < 1024 ? 4 : 6;
+        /* ── Hero scale — big letters that fill the viewport ── */ const heroScale = W < 600 ? 3 : W < 1024 ? 4 : 6;
         const heroGridHalf = Math.floor(heroScale / 2);
         /* ── Pre-render circle sprite (small — for normal sections) ── */ const spriteSize = blockSize + 2;
         const dotSprite = document.createElement("canvas");
@@ -5372,7 +5372,7 @@ function ParticleCanvas() {
         dctx.beginPath();
         dctx.arc(spriteSize / 2, spriteSize / 2, halfBlock, 0, Math.PI * 2);
         dctx.fill();
-        /* ── Pre-render LARGE circle sprite (matches entry screen solid dots) ── */ const entryBlockSize = W < 480 ? 7 : W < 768 ? 10 : W < 1024 ? 18 : 22;
+        /* ── Pre-render LARGE circle sprite (matches entry screen solid dots) ── */ const entryBlockSize = W < 600 ? 14 : W < 1024 ? 18 : 22;
         const heroDotDiam = entryBlockSize;
         const heroSpriteSize = heroDotDiam + 2;
         const heroDotSprite = document.createElement("canvas");
@@ -6372,8 +6372,8 @@ function ExperienceSection() {
         if (!sectionRef.current) return new Map();
         const W = sectionRef.current.clientWidth || window.innerWidth;
         const MathH = Math.max(sectionRef.current.clientHeight, window.innerHeight * 4);
-        const blockSize = W < 480 ? 7 : W < 768 ? 10 : W < 1024 ? 18 : 22;
-        const gap = W < 480 ? 1 : W < 768 ? 2 : 3;
+        const blockSize = W < 600 ? 14 : W < 1024 ? 18 : 22;
+        const gap = W < 600 ? 2 : 3;
         const stp = blockSize + gap;
         const c = Math.floor(W / stp);
         const r = Math.floor(MathH / stp);
@@ -6518,8 +6518,8 @@ function ExperienceSection() {
         canvas.style.height = `${H}px`;
         const ctx = canvas.getContext("2d");
         ctx.scale(dpr, dpr);
-        /* Grid sizing (matches entry screen) */ const blockSize = W < 480 ? 7 : W < 768 ? 10 : W < 1024 ? 18 : 22;
-        const gap = W < 480 ? 1 : W < 768 ? 2 : 3;
+        /* Grid sizing (matches entry screen) */ const blockSize = W < 600 ? 14 : W < 1024 ? 18 : 22;
+        const gap = W < 600 ? 2 : 3;
         const step = blockSize + gap;
         const cols = Math.floor(W / step);
         const rows = Math.floor(H / step);

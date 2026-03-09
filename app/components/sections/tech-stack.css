@@ -1,0 +1,175 @@
+/* ═══════════════════════════════════════
+   Tech Stack Section — React Three Fiber
+   ═══════════════════════════════════════ */
+
+:root {
+  --ts-bg: #050505;
+}
+
+.ts-section {
+  position: relative;
+  width: 100vw;
+  height: 100vh; /* Changed from 250vh since we removed scroll-converge for the 3D scene */
+  background: var(--ts-bg);
+  z-index: 20;
+}
+
+.ts-sticky-wrapper {
+  position: relative; /* No longer need sticky if height is 100vh */
+  width: 100vw;
+  height: 100vh;
+  overflow: hidden;
+}
+
+/* Background grid / scanlines */
+.ts-section::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  height: 100%;
+  background: repeating-linear-gradient(
+    to bottom,
+    transparent 0px,
+    transparent 3px,
+    rgba(0, 0, 0, 0.025) 3px,
+    rgba(0, 0, 0, 0.025) 4px
+  );
+  pointer-events: none;
+  z-index: 5;
+}
+
+/* Marquee Header */
+.ts-header {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100vw;
+  height: clamp(80px, 15vw, 150px);
+  background: transparent;
+  overflow: visible;
+  z-index: 7;
+  transform: translateZ(0);
+  pointer-events: none;
+}
+
+.ts-marquee-track {
+  display: block;
+  white-space: nowrap;
+  height: 100%;
+  width: max-content;
+  animation: expMarquee 40s linear infinite;
+  will-change: transform;
+  transform: translateZ(0);
+}
+
+.ts-marquee-text {
+  display: inline-block;
+  vertical-align: middle;
+  padding-right: 60px;
+  font-family: var(--font-mono), monospace;
+  font-size: clamp(40px, 10vw, 120px);
+  font-weight: 800;
+  color: #ffffff;
+  text-transform: uppercase;
+  letter-spacing: 0.02em;
+  white-space: nowrap;
+  line-height: clamp(80px, 15vw, 150px);
+  user-select: none;
+  text-shadow: 0 0 30px rgba(255,255,255,0.3), 0 0 60px rgba(255,255,255,0.1);
+}
+
+@keyframes expMarquee {
+  0% { transform: translateX(0); }
+  100% { transform: translateX(-50%); }
+}
+
+@media (max-width: 600px) {
+  .ts-header {
+    height: clamp(50px, 12vw, 80px);
+    top: 5%;
+  }
+  .ts-marquee-text {
+    font-size: clamp(20px, 8vw, 50px);
+    padding: 0 10px;
+    line-height: clamp(50px, 12vw, 80px);
+  }
+}
+
+@media (min-width: 601px) and (max-width: 1024px) {
+  .ts-header {
+    height: clamp(60px, 14vw, 120px);
+  }
+  .ts-marquee-text {
+    font-size: clamp(30px, 8vw, 80px);
+    padding: 0 20px;
+    line-height: clamp(60px, 14vw, 120px);
+  }
+}
+
+.ts-marquee-track {
+  display: block;
+  white-space: nowrap;
+  height: 100%;
+  width: max-content;
+  animation: expMarquee 40s linear infinite;
+  will-change: transform;
+  transform: translateZ(0);
+}
+
+.ts-marquee-text {
+  display: inline-block;
+  vertical-align: middle;
+  padding-right: 60px;
+  font-family: var(--font-mono), monospace;
+  font-size: clamp(40px, 10vw, 120px);
+  font-weight: 800;
+  color: #ffffff;
+  text-transform: uppercase;
+  letter-spacing: 0.02em;
+  white-space: nowrap;
+  line-height: clamp(100px, 18vw, 200px);
+  user-select: none;
+  text-shadow: 0 0 30px rgba(255,255,255,0.3), 0 0 60px rgba(255,255,255,0.1);
+}
+
+@keyframes expMarquee {
+  0% { transform: translateX(0); }
+  100% { transform: translateX(-50%); }
+}
+
+@media (max-width: 600px) {
+  .ts-header {
+    height: clamp(50px, 12vw, 80px);
+    top: 5%;
+  }
+  .ts-marquee-text {
+    font-size: clamp(20px, 8vw, 50px);
+    padding: 0 10px;
+    line-height: clamp(50px, 12vw, 80px);
+  }
+}
+
+@media (min-width: 601px) and (max-width: 1024px) {
+  .ts-header {
+    height: clamp(60px, 14vw, 120px);
+  }
+  .ts-marquee-text {
+    font-size: clamp(30px, 8vw, 80px);
+    padding: 0 20px;
+    line-height: clamp(60px, 14vw, 120px);
+  }
+}
+
+/* Pulse / Core glow */
+.ts-core-glow {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  width: 300px;
+  height: 300px;
+  transform: translate(-50%, -50%);
+  background: radial-gradient(circle, rgba(255,255,255,0.1) 0%, transparent 60%);
+  z-index: 2;
+  pointer-events: none;
+  mix-blend-mode: screen;
+}

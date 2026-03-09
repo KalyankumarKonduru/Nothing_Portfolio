@@ -183,8 +183,8 @@ export default function EntryScreen({ onEnter }: { onEnter: () => void }) {
 
     const W = window.innerWidth;
     const H = window.innerHeight;
-    const blockSize = W < 480 ? 7 : W < 768 ? 10 : W < 1024 ? 18 : 22;
-    const gap = W < 480 ? 1 : W < 768 ? 2 : 3;
+    const blockSize = W < 600 ? 14 : W < 1024 ? 18 : 22;
+    const gap = W < 600 ? 2 : 3;
     const step = blockSize + gap;
     const cols = Math.floor(W / step);
     const rows = Math.floor(H / step);

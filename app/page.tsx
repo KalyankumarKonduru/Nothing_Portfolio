@@ -4,6 +4,7 @@ import { useState, useEffect, useCallback } from "react";
 import EntryScreen from "./components/EntryScreen";
 import ParticleCanvas from "./components/ParticleCanvas";
 import ExperienceSection from "./components/sections/ExperienceSection";
+import TechStackSection from "./components/sections/TechStackSection";
 
 export default function Home() {
   const [entered, setEntered] = useState(false);
@@ -35,6 +36,7 @@ export default function Home() {
         <>
           <ParticleCanvas key={`pc-${resizeKey}`} />
           <ExperienceSection key={`exp-${resizeKey}`} />
+          <TechStackSection key={`ts-${resizeKey}`} />
         </>
       )}
     </main>

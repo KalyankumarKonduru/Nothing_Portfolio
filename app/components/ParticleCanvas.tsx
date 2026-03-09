@@ -92,7 +92,7 @@ export default function ParticleCanvas() {
     const halfBlock = blockSize / 2;
 
     /* ── Hero scale — big letters that fill the viewport ── */
-    const heroScale = W < 480 ? 2 : W < 768 ? 3 : W < 1024 ? 4 : 6;
+    const heroScale = W < 600 ? 3 : W < 1024 ? 4 : 6;
     const heroGridHalf = Math.floor(heroScale / 2);
 
     /* ── Pre-render circle sprite (small — for normal sections) ── */
@@ -108,7 +108,7 @@ export default function ParticleCanvas() {
     dctx.fill();
 
     /* ── Pre-render LARGE circle sprite (matches entry screen solid dots) ── */
-    const entryBlockSize = W < 480 ? 7 : W < 768 ? 10 : W < 1024 ? 18 : 22;
+    const entryBlockSize = W < 600 ? 14 : W < 1024 ? 18 : 22;
     const heroDotDiam = entryBlockSize;
     const heroSpriteSize = heroDotDiam + 2;
     const heroDotSprite = document.createElement("canvas");
