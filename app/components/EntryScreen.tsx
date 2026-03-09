@@ -492,8 +492,20 @@ export default function EntryScreen({ onEnter }: { onEnter: () => void }) {
     };
   }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
-  /* ─── Mouse / touch tracking ─── */
+  /* ─── Mouse / touch tracking and Audio Unlock ─── */
   useEffect(() => {
+    /* Browsers strictly require a user gesture (click/tap/key) to unlock audio. 
+       mousemove is ignored by Autoplay policies. */
+    const unlockAudio = () => {
+      initAudio();
+      window.removeEventListener("pointerdown", unlockAudio);
+      window.removeEventListener("keydown", unlockAudio);
+      window.removeEventListener("click", unlockAudio);
+    };
+    window.addEventListener("pointerdown", unlockAudio, { once: true });
+    window.addEventListener("keydown", unlockAudio, { once: true });
+    window.addEventListener("click", unlockAudio, { once: true });
+
     const handleMouse = (e: MouseEvent) => {
       mouseRef.current = { x: e.clientX, y: e.clientY };
     };
@@ -516,6 +528,9 @@ export default function EntryScreen({ onEnter }: { onEnter: () => void }) {
     window.addEventListener("keydown", handleKey);
 
     return () => {
+      window.removeEventListener("pointerdown", unlockAudio);
+      window.removeEventListener("keydown", unlockAudio);
+      window.removeEventListener("click", unlockAudio);
       window.removeEventListener("mousemove", handleMouse);
       window.removeEventListener("touchmove", handleTouch);
       window.removeEventListener("touchstart", handleTouch);
@@ -828,7 +843,6 @@ export default function EntryScreen({ onEnter }: { onEnter: () => void }) {
   /* ─── Click handler ─── */
   const handleClick = useCallback(
     (e: React.MouseEvent) => {
-      initAudio();
       const current = phaseRef.current;
       if (current !== "explore" && current !== "found1") return;
 
@@ -919,7 +933,7 @@ export default function EntryScreen({ onEnter }: { onEnter: () => void }) {
           <div className="entry__hint">
             <span className="entry__hint-icon">&#x2316;</span>
             <span className="entry__hint-text">
-              find the hidden K&apos;s
+              find the hidden K&apos;s; Only curious minds will find them
             </span>
           </div>
         )}

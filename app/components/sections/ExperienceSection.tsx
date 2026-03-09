@@ -198,13 +198,12 @@ export default function ExperienceSection() {
   }, [isActive]);
 
   /* ── Scroll-based activation ──
-     Activate right after hero section (0-100vh). */
+     Activate when ~0.35 viewports scrolled (exactly as hero text fades and converges). */
   useEffect(() => {
     const H = window.innerHeight;
     const handleScroll = () => {
       const scrollY = window.scrollY;
-      /* Activate when ~0.8 viewports scrolled (right after hero) */
-      const threshold = H * 0.8;
+      const threshold = H * 0.35;
       if (scrollY >= threshold && !isActive) {
         setIsActive(true);
       } else if (scrollY < threshold && isActive) {
@@ -218,14 +217,19 @@ export default function ExperienceSection() {
         const scrollProgress = Math.max(0, Math.min(1, -rect.top / (rect.height - H)));
 
         let maxAllowed = 0;
-        if (revealedYearsRef.current.has("2025")) {
-          maxAllowed = 0.25; // allowed to draw to 2024
-          if (revealedYearsRef.current.has("2024")) {
-            maxAllowed = 0.50; // allowed to draw to 2023
-            if (revealedYearsRef.current.has("2023")) {
-              maxAllowed = 0.75; // allowed to draw to 2021
-              if (revealedYearsRef.current.has("2021")) {
-                maxAllowed = 1.0; // allowed to draw to 2019
+        
+        /* Do not allow the line to draw AT ALL until the dots have finished their initial divergence 
+           explosion. Divergence ends exactly at scrollY = H * 1.4 (activation 1.0 + range 0.4). */
+        if (scrollY >= H * 1.4) {
+          if (revealedYearsRef.current.has("2025")) {
+            maxAllowed = 0.25; // allowed to draw to 2024
+            if (revealedYearsRef.current.has("2024")) {
+              maxAllowed = 0.50; // allowed to draw to 2023
+              if (revealedYearsRef.current.has("2023")) {
+                maxAllowed = 0.75; // allowed to draw to 2021
+                if (revealedYearsRef.current.has("2021")) {
+                  maxAllowed = 1.0; // allowed to draw to 2019
+                }
               }
             }
           }
@@ -250,23 +254,34 @@ export default function ExperienceSection() {
 
   /* ── Mouse / touch tracking ── */
   useEffect(() => {
-    const handleMouse = (e: MouseEvent) => {
-      // Need offset for absolute positioning
-      if (!sectionRef.current) return;
+    // Track viewport coordinates independently of scroll
+    let cx = -9999;
+    let cy = -9999;
+    const updateLocalMouse = () => {
+      if (!sectionRef.current || cx === -9999) return;
       const rect = sectionRef.current.getBoundingClientRect();
-      mouseRef.current = { x: e.clientX - rect.left, y: e.clientY - rect.top };
+      mouseRef.current = { x: cx - rect.left, y: cy - rect.top };
+    };
+    const handleMouse = (e: MouseEvent) => {
+      cx = e.clientX;
+      cy = e.clientY;
+      updateLocalMouse();
     };
     const handleTouch = (e: TouchEvent) => {
       const t = e.touches[0];
-      if (!sectionRef.current || !t) return;
-      const rect = sectionRef.current.getBoundingClientRect();
-      mouseRef.current = { x: t.clientX - rect.left, y: t.clientY - rect.top };
+      if (t) {
+        cx = t.clientX;
+        cy = t.clientY;
+        updateLocalMouse();
+      }
     };
     window.addEventListener("mousemove", handleMouse);
     window.addEventListener("touchmove", handleTouch, { passive: true });
+    window.addEventListener("scroll", updateLocalMouse, { passive: true });
     return () => {
       window.removeEventListener("mousemove", handleMouse);
       window.removeEventListener("touchmove", handleTouch);
+      window.removeEventListener("scroll", updateLocalMouse);
     };
   }, []);
 
@@ -277,16 +292,37 @@ export default function ExperienceSection() {
       return;
     }
 
-    /* Record dispersion origin — dots start clustered at cursor then spread */
-    disperseStartRef.current = performance.now();
-    disperseOriginRef.current = {
-      x: mouseRef.current.x > 0 ? mouseRef.current.x : window.innerWidth / 2,
-      y: mouseRef.current.y > 0 ? mouseRef.current.y : window.innerHeight / 2,
-    };
-
     const canvas = canvasRef.current;
     const section = sectionRef.current;
-    if (!canvas || !section) return;
+    if (!canvas || !section) {
+      disperseStartRef.current = 0;
+      return;
+    }
+
+    /* Record dispersion origin — prefer the converged dot position from ParticleCanvas */
+    disperseStartRef.current = performance.now();
+    const rect = section.getBoundingClientRect();
+    const convergedPos = (window as any).__convergedDotPos;
+    if (convergedPos?.active) {
+      /* The convergedPos.y is an absolute document coordinate.
+         We subtract the section's absolute document coordinate (rect.top + window.scrollY) 
+         to get the precise relative Y position within the ExperienceSection canvas. */
+      const sectionAbsoluteY = rect.top + window.scrollY;
+      disperseOriginRef.current = {
+        x: convergedPos.x - rect.left,
+        y: convergedPos.y - sectionAbsoluteY,
+      };
+      convergedPos.active = false; /* consumed */
+    } else {
+      disperseOriginRef.current = {
+        x: mouseRef.current.x > -9000
+          ? mouseRef.current.x
+          : window.innerWidth / 2 - rect.left,
+        y: mouseRef.current.y > -9000
+          ? mouseRef.current.y
+          : window.innerHeight / 2 - rect.top,
+      };
+    }
 
     const W = section.clientWidth || window.innerWidth;
     const scrollH = window.innerHeight * 4; /* 4.0x viewport height to give massive map scroll space */
@@ -547,28 +583,89 @@ export default function ExperienceSection() {
         }
       }
 
-      /* Dispersion progress: dots start clustered at cursor → spread to grid */
-      const disperseElapsed = disperseStartRef.current > 0
-        ? performance.now() - disperseStartRef.current : 99999;
-      const disperseT = Math.min(1, disperseElapsed / 1500);
-      const disperseEase = disperseT < 1 ? 1 - Math.pow(1 - disperseT, 3) : 1;
-      const origX = disperseOriginRef.current.x;
-      const origY = disperseOriginRef.current.y;
+      /* Scroll-linked divergence: dots stay at converged point, then release as user scrolls further.
+         divergeProgress: 0 = all dots at origin, 1 = all dots at their grid positions.
+         Maps scrollY from activation threshold to threshold + 0.35*H 
+         We delay activation until the section is fully in focus (reaches the top of viewport) */
+      const activationThreshold = window.innerHeight * 1.0; 
+      const divergeRange = window.innerHeight * 0.4; /* dots fully released after scrolling another 0.4 viewports */
+      const scrollPastThreshold = window.scrollY - activationThreshold;
+      const divergeProgress = Math.min(1, Math.max(0, scrollPastThreshold / divergeRange));
+      
+      /* Dynamically track the current mouse position. This ensures the dots release 
+         from exactly where the cursor is right now (the converged dot follows the cursor). */
+      const origX = mx;
+      const origY = my;
 
       /* Clear & draw */
       ctx.clearRect(0, 0, W, H);
       const drawNow = performance.now();
+      
+      /* Draw the converged dot holding at the cursor if we haven't fully diverged */
+      if (divergeProgress < 1) {
+        /* Once divergence hits 1, the holding dot fades out completely */
+        const holdDotAlpha = 1 - divergeProgress;
+        const pulseScale = 1 + 0.15 * Math.sin(drawNow / 200);
+        const holdSize = 10 * pulseScale;
+        
+        ctx.save();
+        ctx.globalAlpha = holdDotAlpha;
+        ctx.fillStyle = '#ffffff';
+        ctx.beginPath();
+        ctx.arc(origX, origY, holdSize / 2, 0, Math.PI * 2);
+        ctx.fill();
+        ctx.globalAlpha = holdDotAlpha * 0.3;
+        ctx.beginPath();
+        ctx.arc(origX, origY, holdSize * 1.5, 0, Math.PI * 2);
+        ctx.fill();
+        ctx.restore();
+      }
+
       for (let i = 0; i < N; i++) {
-        if (glows[i] > 0.005) {
+        if (glows[i] > 0.005 || divergeProgress < 1) {
           const gx = i % cols;
           const gy = Math.floor(i / cols);
           let px = oX + gx * step + half;
           let py = oY + gy * step + half;
 
-          /* During dispersion, interpolate from cursor origin to grid position */
-          if (disperseEase < 1 && origX > 0) {
-            px = origX + (px - origX) * disperseEase;
-            py = origY + (py - origY) * disperseEase;
+          let alphaMult = 1;
+          let shootStretch = 1;
+          let shootAngle = 0;
+          let isShooting = false;
+
+          /* Scroll-linked divergence: same hash as hero convergence for consistency */
+          if (divergeProgress < 1) {
+            const hash = ((gx * 73.7 + gy * 157.3 + gx * gy * 0.37) % 997) / 997;
+            
+            /* Each dot fires in a narrow 0.05 window, staggered across 0.95 of divergence */
+            const startT = hash * 0.95;
+            const localT = Math.min(1, Math.max(0, (divergeProgress - startT) / 0.05));
+            
+            if (localT <= 0) {
+               alphaMult = 0; /* Invisible before turn — still at convergence point */
+            } else if (localT < 1) {
+               isShooting = true;
+               /* Cubic-out easing for fast initial burst slowing to final grid position */
+               const easeT = 1 - Math.pow(1 - localT, 3);
+               const easeTPrev = 1 - Math.pow(1 - Math.max(0, localT - 0.1), 3);
+               
+               const dx = px - origX;
+               const dy = py - origY;
+               shootAngle = Math.atan2(dy, dx);
+               const distFull = Math.sqrt(dx*dx + dy*dy);
+               const dCurr = distFull * easeT;
+               const dPrev = distFull * easeTPrev;
+               
+               shootStretch = Math.max(3, (dCurr - dPrev) / 15);
+               alphaMult = Math.min(1, shootStretch * 0.4);
+               
+               px = origX + dx * easeT;
+               py = origY + dy * easeT;
+            } else {
+               /* Landed — fade in smoothly */
+               const fadeT = Math.min(1, (divergeProgress - (startT + 0.05)) / 0.05);
+               alphaMult = fadeT * fadeT;
+            }
           }
 
           /* Stagger pulse scale: 1.0 → 1.3 → 1.0 over PULSE_DUR ms */
@@ -587,21 +684,41 @@ export default function ExperienceSection() {
           const drawSize = spriteSize * scale;
           const halfDraw = drawSize / 2;
 
-          ctx.globalAlpha = glows[i];
+          let renderOp = glows[i] * alphaMult;
+          if (isShooting) {
+              /* Override glow when shooting so they are distinctly visible */
+              renderOp = Math.max(renderOp, Math.min(1, shootStretch * 0.5));
+          } else if (divergeProgress < 1) {
+              /* During scroll-linked divergence, hide dots that haven't fired yet */
+              if (alphaMult === 0) renderOp = 0;
+          }
+           
+          if (renderOp <= 0.005) continue;
+          ctx.globalAlpha = renderOp;
+
+          /* Apply rotation and stretching if currently shooting */
+          ctx.save();
+          ctx.translate(px, py);
+          if (isShooting && shootStretch > 1) {
+              ctx.rotate(shootAngle);
+              ctx.scale(shootStretch, Math.max(0.4, 1.5 - shootStretch*0.1));
+          }
 
           if (isYearDot[i] && glows[i] > 0.35) {
             const tint = Math.min(1, (glows[i] - 0.35) * 3);
-            ctx.drawImage(sprite, px - halfDraw, py - halfDraw, drawSize, drawSize);
+            ctx.drawImage(sprite, -halfDraw, -halfDraw, drawSize, drawSize);
             if (tint > 0.1) {
-              ctx.globalAlpha = tint * 0.6;
+              ctx.globalAlpha = tint * 0.6 * alphaMult;
               ctx.fillStyle = "#ffffff";
               ctx.beginPath();
-              ctx.arc(px, py, half * scale, 0, Math.PI * 2);
+              ctx.arc(0, 0, half * scale, 0, Math.PI * 2);
               ctx.fill();
             }
           } else {
-            ctx.drawImage(sprite, px - halfDraw, py - halfDraw, drawSize, drawSize);
+            ctx.drawImage(sprite, -halfDraw, -halfDraw, drawSize, drawSize);
           }
+          
+          ctx.restore();
         }
       }
       ctx.globalAlpha = 1;
@@ -650,11 +767,6 @@ export default function ExperienceSection() {
         zigzagPointsRef.current = samples;
         zigzagLineStartRef.current = performance.now() + 800;
       } catch { /* Path not ready yet */ }
-
-      setTimeout(() => {
-        zigzagPathRef.current?.classList.add("drawn");
-        zigzagGlowRef.current?.classList.add("drawn");
-      }, 800);
     }
 
     return () => cancelAnimationFrame(rafRef.current);

@@ -311,6 +311,7 @@ export default function ParticleCanvas() {
       /* ── Is hero settled? (for static dots) ── */
       const isHeroSettled = activeSec === 0 && t < 0.01;
       const isOnHero = activeSec === 0;
+      const isConverging = progress > 0.01 && progress < 0.6;
 
       /* ── Flashlight: cursor-proximity glow for hero section ── */
       if (isOnHero) {
@@ -330,7 +331,7 @@ export default function ParticleCanvas() {
            Fast decay (0.6) matches entry screen behavior. */
         for (let i = 0; i < N; i++) {
           if (glows[i] > 0.005) {
-            glows[i] *= 0.6;
+            glows[i] *= isConverging ? 0.3 : 0.6; /* Decay much faster while converging */
           } else {
             glows[i] = 0;
           }
@@ -355,7 +356,10 @@ export default function ParticleCanvas() {
                 target = Math.max(target, falloff * 0.95);
               }
               if (target > glows[idx]) {
-                glows[idx] = glows[idx] + (target - glows[idx]) * 0.55;
+                /* Suppress glow buildup during convergence */
+                if (!isConverging) {
+                  glows[idx] = glows[idx] + (target - glows[idx]) * 0.55;
+                }
               }
             }
           }
@@ -487,10 +491,16 @@ export default function ParticleCanvas() {
         /* On hero: opacity = glow directly (matches entry screen behavior).
            All dots can reach 1.0. Glow IS the opacity. */
         if (isOnHero) {
-          tgtOpacity = glows[i];
+          tgtOpacity = isConverging ? 0 : glows[i]; /* During convergence, decay to 0 — shooting visibility is handled by renderOp override */
         } else {
           tgtOpacity = opaA * (1 - eased) + opaB * eased;
         }
+
+        let isShooting = false;
+        let shootStretch = 1;
+        let shootAngle = 0;
+        let isConverged = false;
+        let alphaMult = 1;
 
         /* Organic noise during transition */
         if (chaos > 0.5) {
@@ -504,16 +514,54 @@ export default function ParticleCanvas() {
         tgtY = tgtY * (1 - centerPull) + cY * centerPull;
 
         /* Converge toward cursor when scrolling from hero toward experience */
-        if (progress > 0.5 && progress < 1.5) {
-          const convMx = soundMouse.x;
-          const convMy = soundMouse.y;
-          if (convMx > 0 && convMy > 0) {
-            /* Ramp 0→1 from progress 0.5 to ~1.0, quadratic for dramatic pull */
-            const convergeFactor = Math.min(1, (progress - 0.5) / 0.5);
-            const pullStr = convergeFactor * convergeFactor * 0.85;
-            tgtX = tgtX + (convMx - tgtX) * pullStr;
-            tgtY = tgtY + (convMy - tgtY) * pullStr;
+        if (progress > 0.02 && progress < 0.6) {
+          const convMx = soundMouse.x > 0 ? soundMouse.x : cX;
+          const convMy = soundMouse.y > 0 ? soundMouse.y : cY;
+          const convergeProgress = Math.min(1, Math.max(0, (progress - 0.02) / 0.33));
+          
+          /* Hash using BOTH gx and gy to break column patterns */
+          const gx = i % cols;
+          const gy = Math.floor(i / cols);
+          const hash = ((gx * 73.7 + gy * 157.3 + gx * gy * 0.37) % 997) / 997;
+          
+          /* Each dot fires within a narrow 0.05 window, staggered across 0.95 of convergence */
+          const startT = hash * 0.95;
+          const localT = Math.min(1, Math.max(0, (convergeProgress - startT) / 0.05));
+
+          if (convergeProgress > 0) {
+            if (localT <= 0) {
+               alphaMult = 0; /* Remain invisible before turn comes */
+            } else if (localT < 1) {
+               isShooting = true;
+            } else {
+               isConverged = true;
+            }
           }
+
+          /* Cubic-in easing for fast acceleration towards cursor */
+          const easeT = localT * localT * localT;
+          const easeTPrev = Math.max(0, localT - 0.1);
+          const easeTPrevCube = Math.pow(easeTPrev, 3);
+
+          const dx = convMx - tgtX;
+          const dy = convMy - tgtY;
+          
+          if (isShooting) {
+             shootAngle = Math.atan2(dy, dx);
+             const distFull = Math.sqrt(dx*dx + dy*dy);
+             const dCurr = distFull * easeT;
+             const dPrev = distFull * easeTPrevCube;
+             /* Stretch based on distance traveled in the last fraction of progress */
+             shootStretch = Math.max(3, (dCurr - dPrev) / 15); /* min 3x so it never appears as a circle */
+             alphaMult = Math.min(1, shootStretch * 0.4); /* bright spark while shooting */
+          }
+          if (isConverged) {
+             /* When fully converged, we can dim it or wait */
+             alphaMult = 0.0; /* Hide it once it hits the cursor so cursor isn't a massive blob */
+          }
+
+          tgtX = tgtX + dx * easeT;
+          tgtY = tgtY + dy * easeT;
         }
 
         /* ── Movement: static on hero, organic drift elsewhere ── */
@@ -540,12 +588,21 @@ export default function ParticleCanvas() {
         const opaLerp = isOnHero ? 0.55 : 0.08;
         p.opacity += (tgtOpacity - p.opacity) * opaLerp;
 
+        let renderOp = p.opacity * alphaMult;
+        if (isShooting) {
+           renderOp = Math.max(renderOp, Math.min(1, shootStretch * 0.5));
+        } else if (progress > 0.01) {
+           /* Once the user starts scrolling to converge, stationary hero dots vanish forever. 
+              Only shooting streaks and the converged dot remain. */
+           renderOp = 0;
+        }
+
         /* Draw via pre-rendered sprite.
            On hero: only draw hero-grid dots (text + pond), use large sprite.
            On other sections: draw all dots with small sprite.
            Size lerps smoothly during transitions. */
-        if (p.opacity > 0.005) {
-          ctx.globalAlpha = p.opacity;
+        if (renderOp > 0.005) {
+          ctx.globalAlpha = renderOp;
 
           /* Compute how much "hero" is active: 1 = fully on hero, 0 = other section */
           let heroBlend = 0;
@@ -569,25 +626,160 @@ export default function ParticleCanvas() {
               }
               const drawSize = (spriteSize + (heroSpriteSize - spriteSize) * heroBlend) * pScale;
               const halfDraw = drawSize / 2;
-              ctx.drawImage(heroDotSprite, p.x - halfDraw, p.y - halfDraw, drawSize, drawSize);
+              
+              ctx.save();
+              ctx.translate(p.x, p.y);
+              if (isShooting && shootStretch > 1) {
+                ctx.rotate(shootAngle);
+                ctx.scale(shootStretch, Math.max(0.4, 1.5 - shootStretch*0.1)); // thinner as it stretches
+              }
+              ctx.drawImage(heroDotSprite, -halfDraw, -halfDraw, drawSize, drawSize);
+              ctx.restore();
             }
             /* isHeroCenterDot — handled by DOM overlay below */
             /* Skip intermediate dots — they're not part of the hero grid */
           } else {
-            ctx.drawImage(dotSprite, p.x - halfSprite, p.y - halfSprite, spriteSize, spriteSize);
+            ctx.save();
+            ctx.translate(p.x, p.y);
+            if (isShooting && shootStretch > 1) {
+              ctx.rotate(shootAngle);
+              ctx.scale(shootStretch, Math.max(0.4, 1.5 - shootStretch*0.1));
+            }
+            ctx.drawImage(dotSprite, -halfSprite, -halfSprite, spriteSize, spriteSize);
+            ctx.restore();
           }
         }
       }
 
+      /* ── Single "converged dot" — visible once most dots have converged ── */
+      if (isConverging && progress < 0.6) {
+        const convergeProgress = Math.min(1, Math.max(0, (progress - 0.02) / 0.33));
+        /* Count how far along convergence is — show dot once > 30% of dots have arrived */
+        if (convergeProgress > 0.3) {
+          const convMx = soundMouse.x > 0 ? soundMouse.x : cX;
+          const convMy = soundMouse.y > 0 ? soundMouse.y : cY;
+          /* Fade in the dot as more particles converge, fade out when progress > 0.5 */
+          const fadeOut = Math.max(0, 1 - (progress - 0.5) / 0.1); 
+          const dotAlpha = Math.min(1, (convergeProgress - 0.3) / 0.5) * fadeOut;
+          /* Pulsing glow effect */
+          const pulseScale = 1 + 0.15 * Math.sin(time * 6);
+          const dotSize = (6 + convergeProgress * 4) * pulseScale;
+          
+          ctx.save();
+          ctx.globalAlpha = dotAlpha;
+          /* Bright white core */
+          ctx.fillStyle = '#ffffff';
+          ctx.beginPath();
+          ctx.arc(convMx, convMy, dotSize / 2, 0, Math.PI * 2);
+          ctx.fill();
+          /* Soft glow halo */
+          ctx.globalAlpha = dotAlpha * 0.3;
+          ctx.beginPath();
+          ctx.arc(convMx, convMy, dotSize * 1.5, 0, Math.PI * 2);
+          ctx.fill();
+          ctx.restore();
+
+          /* Store MAXIMUM absolute page position so it stays fixed in place 
+             even if we keep scrolling down */
+          if (fadeOut > 0.1) {
+            (window as any).__convergedDotPos = { 
+              x: convMx, 
+              y: convMy + window.scrollY, 
+              active: true 
+            };
+          }
+        }
+      } else if (progress >= 0.6) {
+        /* Clear the converged dot once we're fully past convergence */
+        if ((window as any).__convergedDotPos?.active) {
+          (window as any).__convergedDotPos.active = false;
+        }
+      }
       /* ── Update DOM hero text dots (opacity + trigger pop) ── */
       if (heroDotsContainer) {
-        const showDomDots = isOnHero;
+        /* Only process/show DOM dots while on the hero section and during convergence.
+           Once we pass the convergence threshold (0.6), hide them completely. */
+        const showDomDots = progress < 0.6;
         heroDotsContainer.style.display = showDomDots ? "" : "none";
         if (showDomDots) {
+          const offset = entryBlockSize * 0.65;
           for (let d = 0; d < heroDotEls.length; d++) {
             const idx = heroDotIndices[d];
             const g = glows[idx];
-            heroDotEls[d].style.opacity = String(g);
+            const p = particles[idx];
+
+            let dx = 0;
+            let dy = 0;
+            let isShooting = false;
+            let isConverged = false;
+            let shootAngle = 0;
+            let shootStretch = 1;
+            let alphaMult = 1;
+
+            if (progress > 0.02 && progress < 0.6) {
+              const convMx = soundMouse.x > 0 ? soundMouse.x : cX;
+              const convMy = soundMouse.y > 0 ? soundMouse.y : cY;
+              const convergeProgress = Math.min(1, Math.max(0, (progress - 0.02) / 0.33));
+              const gxD = idx % cols;
+              const gyD = Math.floor(idx / cols);
+              const hash = ((gxD * 73.7 + gyD * 157.3 + gxD * gyD * 0.37) % 997) / 997;
+              const startT = hash * 0.95;
+              const localT = Math.min(1, Math.max(0, (convergeProgress - startT) / 0.05));
+              
+              if (convergeProgress > 0) {
+                if (localT <= 0) {
+                  alphaMult = 0;
+                } else if (localT < 1) {
+                  isShooting = true;
+                } else {
+                  isConverged = true;
+                  alphaMult = 0; 
+                }
+              }
+              
+              const easeT = localT * localT * localT;
+              const easeTPrev = Math.max(0, localT - 0.1);
+              const easeTPrevCube = Math.pow(easeTPrev, 3);
+              
+              const fromT = p.targets[0];
+              const tX = convMx - fromT.x;
+              const tY = convMy - fromT.y;
+              dx = tX * easeT;
+              dy = tY * easeT;
+              
+              if (isShooting) {
+                shootAngle = Math.atan2(tY, tX);
+                const distFull = Math.sqrt(tX*tX + tY*tY);
+                const dCurr = distFull * easeT;
+                const dPrev = distFull * easeTPrevCube;
+                shootStretch = Math.max(3, (dCurr - dPrev) / 15); /* min 3x */
+              }
+            }
+            
+            let domOp = g * alphaMult;
+            if (isShooting) {
+                domOp = Math.max(domOp, Math.min(1, shootStretch * 0.5));
+            } else if (progress > 0.01 && progress < 0.6) {
+                /* If we are in the scroll transition zone but not shooting, force DOM dots to be invisible 
+                   so we don't see the stationary dots lingering behind. */
+                domOp = 0;
+            }
+
+            heroDotEls[d].style.opacity = String(domOp);
+            
+            /* Apply translation & stretch */
+            let transform = `translate(${dx}px, ${dy}px)`;
+            if (isShooting && shootStretch > 1) {
+               transform += ` rotate(${shootAngle}rad) scaleX(${shootStretch}) scaleY(${Math.max(0.4, 1.5 - shootStretch*0.1)})`;
+            }
+            heroDotEls[d].style.transform = transform;
+            
+            /* We don't overwrite left/top per frame so translation works correctly off original left/top */
+            if (!heroDotEls[d].dataset.init) {
+                heroDotEls[d].style.left = `${p.targets[0].x - offset}px`;
+                heroDotEls[d].style.top = `${p.targets[0].y - offset}px`;
+                heroDotEls[d].dataset.init = "1";
+            }
 
             /* Trigger anime.js pop-forward on first reveal */
             if (!heroDotRevealed[d] && g > 0.25) {
@@ -602,15 +794,15 @@ export default function ParticleCanvas() {
             }
 
             /* Wave pulse scale for text dots (after pop is done) */
-            if (heroDotRevealed[d] && pulseStart[idx] > 0) {
+            if (!isShooting && heroDotRevealed[d] && pulseStart[idx] > 0) {
               const pNow = performance.now();
               const pEl = pNow - pulseStart[idx];
               if (pEl >= 0 && pEl < PULSE_DUR) {
                 const s = 1 + 0.3 * Math.sin((pEl / PULSE_DUR) * Math.PI);
-                heroDotEls[d].style.transform = `scale(${s})`;
+                heroDotEls[d].style.transform = `translate(${dx}px, ${dy}px) scale(${s})`;
               } else if (pEl >= PULSE_DUR) {
                 pulseStart[idx] = 0;
-                heroDotEls[d].style.transform = "";
+                heroDotEls[d].style.transform = `translate(${dx}px, ${dy}px)`;
               }
             }
           }

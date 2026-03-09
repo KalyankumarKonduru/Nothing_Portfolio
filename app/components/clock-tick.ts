@@ -21,6 +21,11 @@ export function initAudio() {
 
 export function playClockTick(volume = 0.12) {
   const ctx = ensureCtx();
+  
+  /* Prevent queuing up hundreds of sounds at t=0 while the browser has autoplay blocked. 
+     Otherwise they all suddenly play at once when the user clicks, causing a deafening pop. */
+  if (ctx.state === "suspended") return;
+
   const t = ctx.currentTime;
 
   /* Resonant body — the "tick" of the escapement mechanism */
