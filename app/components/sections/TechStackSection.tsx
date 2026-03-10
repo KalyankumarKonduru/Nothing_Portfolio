@@ -256,7 +256,7 @@ export default function TechStackSection() {
     });
   };
 
-  const marqueeTextString = "TECH STACK / SKILLS / ";
+  const marqueeTextString = "TECH STACK ";
 
   return (
     <section ref={sectionRef} className="ts-section" style={{ height: '100vh', overflow: 'hidden', position: 'relative' }}>
